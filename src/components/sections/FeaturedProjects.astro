@@ -1,0 +1,48 @@
+---
+import { localizedPath, useTranslations, type Locale } from '@/i18n';
+import type { Project } from '@/lib/projects';
+import Button from '@/components/ui/Button.astro';
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import ProjectCard from '@/components/projects/ProjectCard.astro';
+
+interface Props {
+  locale: Locale;
+  projects: Project[];
+}
+
+const { locale, projects } = Astro.props;
+const t = useTranslations(locale);
+---
+
+<section id="projets" class="relative py-28 md:py-40" aria-labelledby="projets-title">
+  <div class="container-x">
+    <div class="flex flex-wrap items-end justify-between gap-8">
+      <SectionHeading
+        headingId="projets-title"
+        index="02"
+        eyebrow={t.projects.eyebrow}
+        title={t.projects.title}
+        intro={t.projects.intro}
+      />
+      {projects.length > 0 && (
+        <div data-reveal>
+          <Button href={localizedPath('/projets/', locale)} variant="ghost">
+            {t.projects.seeAll}
+          </Button>
+        </div>
+      )}
+    </div>
+
+    {projects.length > 0 ? (
+      <div class="mt-16 columns-1 gap-x-8 md:mt-24 md:columns-2 lg:gap-x-12 xl:columns-3">
+        {projects.map((project, i) => (
+          <ProjectCard project={project} locale={locale} priority={i < 2} />
+        ))}
+      </div>
+    ) : (
+      <p class="text-paper-muted mt-16 max-w-md border-l border-mauve-400/40 pl-6" data-reveal>
+        {t.projects.empty}
+      </p>
+    )}
+  </div>
+</section>

@@ -1,0 +1,79 @@
+---
+import { defaultLocale, enabledLocales, localizedPath, useTranslations, type Locale } from '@/i18n';
+
+interface Props {
+  /** Titre de la page (sans le suffixe du site). Absent = titre du site. */
+  title?: string;
+  description?: string;
+  /** Image de partage (URL absolue ou chemin /public). */
+  image?: string;
+  imageAlt?: string;
+  type?: 'website' | 'article';
+  noindex?: boolean;
+  locale?: Locale;
+  /** Chemin de la page SANS préfixe de langue (pour les hreflang). Défaut : URL courante. */
+  path?: string;
+  /** Données structurées JSON-LD supplémentaires. */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+const {
+  title,
+  description,
+  image,
+  imageAlt,
+  type = 'website',
+  noindex = false,
+  locale = defaultLocale,
+  path,
+  jsonLd,
+} = Astro.props;
+
+const t = useTranslations(locale);
+const fullTitle = title ? t.meta.titleTemplate.replace('%s', title) : t.meta.siteTitle;
+const desc = description ?? t.meta.description;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const imageUrl = image ? new URL(image, Astro.site).href : undefined;
+
+// hreflang : uniquement s'il existe plusieurs langues publiées.
+const barePath = path ?? Astro.url.pathname;
+const alternates =
+  enabledLocales.length > 1
+    ? enabledLocales.map((l) => ({
+        hreflang: l,
+        href: new URL(localizedPath(barePath, l), Astro.site).href,
+      }))
+    : [];
+
+const structured = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={desc} />
+<link rel="canonical" href={canonical} />
+{noindex && <meta name="robots" content="noindex, nofollow" />}
+{alternates.map((a) => (
+  <link rel="alternate" hreflang={a.hreflang} href={a.href} />
+))}
+{alternates.length > 0 && <link rel="alternate" hreflang="x-default" href={canonical} />}
+
+<meta property="og:site_name" content="Ibrahima Faye" />
+<meta property="og:type" content={type} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={desc} />
+<meta property="og:url" content={canonical} />
+<meta property="og:locale" content={t.meta.ogLocale} />
+{imageUrl && <meta property="og:image" content={imageUrl} />}
+{imageUrl && imageAlt && <meta property="og:image:alt" content={imageAlt} />}
+
+<meta name="twitter:card" content={imageUrl ? 'summary_large_image' : 'summary'} />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={desc} />
+{imageUrl && <meta name="twitter:image" content={imageUrl} />}
+
+{structured.map((data) => (
+  <script
+    type="application/ld+json"
+    set:html={JSON.stringify({ '@context': 'https://schema.org', ...data })}
+  ></script>
+))}

@@ -1,0 +1,36 @@
+/*
+  Grille de la galerie — partagée par le site public (Gallery.astro) et l'éditeur de l'administration.
+  12 colonnes ; chaque média occupe `--span` colonnes ; sa hauteur vient de SON ratio (`--r`) : jamais recadré.
+  Voir src/lib/gallery-layout.ts pour le vocabulaire (1 col = 3, ½ = 6, ¾ = 9, pleine largeur = 12).
+*/
+.gg {
+  --gap: clamp(0.5rem, 1.4vw, 1rem);
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--gap);
+  align-items: start;
+}
+
+.gg-item {
+  grid-column: span var(--span, 6);
+  align-self: var(--align, center);
+  min-width: 0;
+}
+
+/*
+  Le cadre du média a exactement son ratio. Un média très haut est plafonné à la hauteur de l'écran
+  (et centré dans sa cellule) plutôt que déformé ou recadré.
+*/
+.gg-tile {
+  display: block;
+  width: min(100%, calc(88svh * var(--r, 1.5)));
+  margin-inline: auto;
+  aspect-ratio: var(--r, 1.5);
+}
+
+/* Petits écrans : une seule colonne, chaque média en pleine largeur, dans l'ordre choisi. */
+@media (max-width: 639px) {
+  .gg-item {
+    grid-column: 1 / -1;
+  }
+}

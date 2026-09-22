@@ -1,0 +1,35 @@
+---
+import Icon, { type IconName } from './Icon.astro';
+
+interface Props {
+  href: string;
+  variant?: 'primary' | 'ghost';
+  icon?: IconName | null;
+  external?: boolean;
+  class?: string;
+  /** Effet « magnétique » au survol (GSAP, souris uniquement). */
+  magnetic?: boolean;
+}
+
+const {
+  href,
+  variant = 'primary',
+  icon = 'arrow-right',
+  external = false,
+  class: className,
+  magnetic = true,
+} = Astro.props;
+---
+
+<a
+  href={href}
+  class:list={['btn', variant === 'primary' ? 'btn-primary' : 'btn-ghost', className]}
+  data-magnetic={magnetic ? '' : undefined}
+  target={external ? '_blank' : undefined}
+  rel={external ? 'noopener noreferrer' : undefined}
+>
+  <span>
+    <slot />
+  </span>
+  {icon && <Icon name={icon} />}
+</a>

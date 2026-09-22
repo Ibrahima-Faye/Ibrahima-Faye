@@ -1,0 +1,50 @@
+---
+/**
+ * Coque de l'administration locale — servie sur /admin UNIQUEMENT en `npm run dev`
+ * (route injectée par integrations/local-cms ; absente du site publié).
+ * L'interface elle-même est dans src/cms/app/ (TypeScript, sans framework).
+ */
+import '@/styles/global.css';
+import '@/cms/admin.css';
+import { domainNumber, domainSlugs } from '@/data/domains';
+import { entitySlugs, projectStatuses } from '@/data/entities';
+import { useTranslations } from '@/i18n';
+import { SPAN_INFO } from '@/lib/gallery-layout';
+
+const t = useTranslations('fr');
+
+// Vocabulaire du site transmis à l'interface (une seule source de vérité : src/data + src/i18n).
+const meta = {
+  categories: domainSlugs.map((slug) => ({
+    slug,
+    number: domainNumber(slug),
+    title: t.domains[slug].title,
+  })),
+  entities: entitySlugs.map((slug) => ({
+    slug,
+    name: t.entities[slug].name,
+    role: t.entities[slug].role,
+  })),
+  statuses: projectStatuses.map((slug) => ({ slug, label: t.statuses[slug] })),
+  spans: SPAN_INFO,
+};
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark" />
+    <title>Administration — Ibrahima Faye</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="cms">
+    <div id="cms-root"></div>
+    <script type="application/json" id="cms-meta" set:html={JSON.stringify(meta)}></script>
+    <script>
+      import '@/cms/app/main';
+    </script>
+  </body>
+</html>

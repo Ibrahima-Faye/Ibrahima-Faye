@@ -1,0 +1,56 @@
+---
+import { useTranslations, type Locale } from '@/i18n';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+---
+
+<section class="relative isolate overflow-hidden py-32 md:py-48" aria-label={t.manifesto.eyebrow}>
+  <div
+    class="bg-electric-600/10 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[44rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[150px]"
+    aria-hidden="true"
+  ></div>
+
+  <div class="container-x">
+    <p class="eyebrow mb-10 flex items-center gap-4" data-reveal="fade">
+      <span class="bg-mauve-400/50 h-px w-10"></span>
+      {t.manifesto.eyebrow}
+    </p>
+
+    <p
+      class="font-display max-w-6xl text-[clamp(1.55rem,3.5vw,3.15rem)] leading-[1.18] font-semibold tracking-[-0.02em]"
+      data-split="scrub"
+    >
+      {t.manifesto.statement}
+    </p>
+
+    <!-- créativité + conception + technologie + fabrication -->
+    <ul
+      class="mt-20 flex flex-wrap items-center gap-x-5 gap-y-3 md:mt-28"
+      aria-label={t.manifesto.equation.join(' + ')}
+      data-reveal
+    >
+      {t.manifesto.equation.map((word, i) => (
+        <>
+          {i > 0 && (
+            <li class="text-electric-400 font-mono text-xl" aria-hidden="true">
+              +
+            </li>
+          )}
+          <li
+            class:list={[
+              'font-display text-[clamp(1.4rem,3vw,2.6rem)] font-bold tracking-tight uppercase',
+              i % 2 === 0 ? 'text-lavender-100' : 'text-outline',
+            ]}
+          >
+            {word}
+          </li>
+        </>
+      ))}
+    </ul>
+  </div>
+</section>

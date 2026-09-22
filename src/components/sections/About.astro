@@ -1,0 +1,118 @@
+---
+import { Picture } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import { useTranslations, type Locale } from '@/i18n';
+import { site } from '@/config/site';
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+
+// Photo : déposer src/assets/portrait.jpg (ou .png / .webp / .avif) — détectée automatiquement.
+const portraits = import.meta.glob<ImageMetadata>('/src/assets/portrait.{jpg,jpeg,png,webp,avif}', {
+  eager: true,
+  import: 'default',
+});
+const portrait = Object.values(portraits)[0];
+const ratio = portrait ? portrait.width / portrait.height : 4 / 5;
+---
+
+<section id="a-propos" class="relative py-28 md:py-40" aria-labelledby="a-propos-title">
+  <div class="container-x">
+    <div
+      class="grid items-start gap-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-24"
+      data-parallax-scope
+    >
+      <!-- Portrait — ratio d'origine conservé -->
+      <div class="relative mx-auto w-full max-w-md lg:mx-0 lg:sticky lg:top-28" data-reveal="mask">
+        <div
+          class="border-mauve-300/20 bg-navy-950 relative overflow-hidden rounded-[0.5rem] border"
+          style={`aspect-ratio:${ratio.toFixed(4)}`}
+        >
+          {portrait ? (
+            <Picture
+              src={portrait}
+              alt={t.about.portraitAlt}
+              formats={['avif', 'webp']}
+              widths={[480, 800, 1200]}
+              sizes="(min-width: 1024px) 40vw, 90vw"
+              pictureAttributes={{ class: 'block size-full' }}
+              class="size-full object-cover"
+            />
+          ) : (
+            <div
+              class="grid size-full place-items-center bg-[radial-gradient(80%_60%_at_50%_30%,var(--color-navy-800),var(--color-ink-950))]"
+              role="img"
+              aria-label={t.about.portraitAlt}
+            >
+              <span
+                class="font-display text-outline text-[clamp(6rem,16vw,11rem)] leading-none font-extrabold tracking-tighter"
+                aria-hidden="true"
+              >
+                {site.initials}
+              </span>
+            </div>
+          )}
+          <div
+            class="from-ink-950/50 pointer-events-none absolute inset-0 bg-gradient-to-t to-transparent"
+            aria-hidden="true"
+          ></div>
+        </div>
+        <!-- repères d'angle -->
+        <span
+          class="border-mauve-300/60 absolute -top-2 -left-2 size-5 border-t border-l"
+          aria-hidden="true"
+        ></span>
+        <span
+          class="border-mauve-300/60 absolute -right-2 -bottom-2 size-5 border-r border-b"
+          aria-hidden="true"
+        ></span>
+      </div>
+
+      <div>
+        <SectionHeading
+          headingId="a-propos-title"
+          index="04"
+          eyebrow={t.about.eyebrow}
+          title={t.about.title}
+        />
+
+        <div class="mt-10 space-y-6">
+          {t.about.paragraphs.map((paragraph, i) => (
+            <p
+              class:list={[
+                'max-w-xl leading-[1.75]',
+                i === 0 ? 'text-lavender-100 text-xl md:text-2xl' : 'text-paper-muted text-lg',
+              ]}
+              data-reveal
+            >
+              {paragraph}
+            </p>
+          ))}
+        </div>
+
+        <!-- Démarche : concevoir → visualiser → fabriquer → automatiser -->
+        <div class="mt-16" data-reveal>
+          <p class="eyebrow mb-6">{t.about.stepsLabel}</p>
+          <ol class="border-t border-white/10">
+            {t.about.steps.map((step, i) => (
+              <li class="grid grid-cols-[3rem_1fr] items-baseline gap-4 border-b border-white/10 py-5 md:grid-cols-[3rem_10rem_1fr]">
+                <span class="text-paper-faint font-mono text-xs tracking-widest">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span class="font-display text-xl font-bold tracking-tight uppercase">
+                  {step.title}
+                </span>
+                <span class="text-paper-muted col-start-2 md:col-start-auto">{step.text}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

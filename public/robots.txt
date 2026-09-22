@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Le sitemap est généré au build (sitemap-index.xml). Une fois le domaine définitif connu,
+# ajoutez ici la ligne :   Sitemap: https://VOTRE-DOMAINE/sitemap-index.xml

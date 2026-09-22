@@ -1,0 +1,232 @@
+---
+import { domainNumber, domainSlugs } from '@/data/domains';
+import { localizedPath, plural, useTranslations, type Locale } from '@/i18n';
+import { getDomainMedia } from '@/lib/media';
+import DomainFrame from '@/components/ui/DomainFrame.astro';
+import DomainIcon from '@/components/ui/DomainIcon.astro';
+import Icon from '@/components/ui/Icon.astro';
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import type { DomainSlug } from '@/data/domains';
+
+interface Props {
+  locale: Locale;
+  /** Nombre de projets par domaine (les domaines sans projet ne sont pas cliquables). */
+  counts: Map<DomainSlug, number>;
+}
+
+const { locale, counts } = Astro.props;
+const t = useTranslations(locale);
+const projectsPath = localizedPath('/projets/', locale);
+
+const rows = domainSlugs.map((slug) => {
+  const count = counts.get(slug) ?? 0;
+  return {
+    slug,
+    number: domainNumber(slug),
+    ...t.domains[slug],
+    count,
+    href: count > 0 ? `${projectsPath}?domaine=${slug}` : undefined,
+    media: getDomainMedia(slug),
+  };
+});
+---
+
+<section id="expertises" class="relative py-28 md:py-40" aria-labelledby="expertises-title">
+  <div class="container-x">
+    <SectionHeading
+      headingId="expertises-title"
+      index="01"
+      eyebrow={t.expertises.eyebrow}
+      title={t.expertises.title}
+      intro={t.expertises.intro}
+    />
+
+    <div
+      class="mt-16 grid gap-16 md:mt-24 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] xl:gap-20"
+      data-expertises
+    >
+      <!-- Liste : chaque ligne active son visuel (survol, focus clavier, ou position au scroll) -->
+      <ol class="border-t border-white/10">
+        {rows.map((row) => {
+          const Tag = row.href ? 'a' : 'div';
+          return (
+            <li class="border-b border-white/10" data-reveal>
+              <Tag
+                href={row.href}
+                tabindex={row.href ? undefined : 0}
+                data-domain-key={row.slug}
+                data-active="false"
+                class="domain-row group relative grid grid-cols-[1fr_auto] items-center gap-x-5 gap-y-3 py-7 md:py-9 xl:grid-cols-[3.5rem_minmax(0,1fr)_auto] xl:gap-x-6"
+              >
+                <span class="num text-paper-faint col-start-1 row-start-1 font-mono text-sm tracking-widest transition-colors duration-500 xl:col-auto xl:row-auto">
+                  {row.number}
+                </span>
+                <span class="col-span-2 row-start-2 min-w-0 xl:col-span-1 xl:row-auto">
+                  <h3 class="title font-display text-[clamp(1.2rem,5.4vw,2.9rem)] leading-[1.05] font-bold tracking-[-0.025em] uppercase transition-transform duration-700 ease-[var(--ease-out-expo)] xl:text-[clamp(1.5rem,2.3vw,2.6rem)]">
+                    {row.title}
+                  </h3>
+                  <p class="desc text-paper-muted mt-3 max-w-md text-[0.95rem] leading-relaxed">
+                    {row.description}
+                  </p>
+                </span>
+                <span class="col-start-2 row-start-1 flex items-center justify-end gap-4 xl:col-auto xl:row-auto">
+                  {row.count > 0 && (
+                    <span class="text-paper-faint group-hover:text-lavender-100 hidden font-mono text-[0.68rem] tracking-widest whitespace-nowrap uppercase transition-colors sm:inline">
+                      {plural(t.expertises.projectsCount, row.count)}
+                    </span>
+                  )}
+                  <DomainIcon
+                    slug={row.slug}
+                    class="icon text-paper-faint size-9 shrink-0 transition-all duration-700 xl:size-11"
+                  />
+                </span>
+                <!-- Visuel intégré à la ligne : petits écrans (le grand cadre est à droite dès 1280 px) -->
+                <span class="col-span-2 mt-2 block xl:hidden">
+                  <DomainFrame
+                    slug={row.slug}
+                    title={row.title}
+                    media={row.media}
+                    illustrationLabel={t.expertises.illustration}
+                    class="mx-auto max-w-xl"
+                  />
+                </span>
+              </Tag>
+            </li>
+          );
+        })}
+      </ol>
+
+      <!-- Scène : le visuel du domaine actif (grand écran) -->
+      <div class="hidden xl:block" data-reveal>
+        <div class="sticky top-28">
+          <div class="stage grid">
+            {rows.map((row) => (
+              <div class="stage-item" data-domain-key={row.slug} data-active="false">
+                <DomainFrame
+                  slug={row.slug}
+                  title={row.title}
+                  media={row.media}
+                  illustrationLabel={t.expertises.illustration}
+                />
+                <div class="mt-5 flex items-end justify-between gap-6">
+                  <p class="font-display text-lavender-100 text-xl font-bold tracking-tight uppercase">
+                    <span class="text-paper-faint mr-3 font-mono text-sm tracking-widest">
+                      {row.number}
+                    </span>
+                    {row.title}
+                  </p>
+                  {row.href && (
+                    <a
+                      href={row.href}
+                      class="link-line text-mauve-300 hover:text-lavender-100 inline-flex shrink-0 items-center gap-2 text-sm font-semibold"
+                      tabindex="-1"
+                    >
+                      {plural(t.expertises.projectsCount, row.count)}
+                      <Icon name="arrow-right" class="size-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Balayage violet au survol / à l'activation : ligne de lecture, sans carte ni bordure */
+  .domain-row::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(-1 * clamp(1.25rem, 4.5vw, 4rem));
+    z-index: -1;
+    background: linear-gradient(
+      90deg,
+      rgb(123 77 255 / 0.16),
+      rgb(123 77 255 / 0.03) 60%,
+      transparent
+    );
+    transform: scaleX(0);
+    transform-origin: left;
+    opacity: 0;
+    transition:
+      transform 0.8s var(--ease-out-expo),
+      opacity 0.5s;
+  }
+
+  /* Repère vertical de la ligne active */
+  .domain-row::after {
+    content: '';
+    position: absolute;
+    left: calc(-1 * clamp(1.25rem, 4.5vw, 4rem) + 1px);
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    background: linear-gradient(var(--color-mauve-300), var(--color-electric-500));
+    transform: scaleY(0);
+    transition: transform 0.6s var(--ease-out-expo);
+  }
+
+  .domain-row[data-active='true']::before,
+  a.domain-row:hover::before,
+  a.domain-row:focus-visible::before {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+
+  .domain-row[data-active='true']::after {
+    transform: scaleY(1);
+  }
+
+  .domain-row[data-active='true'] .num {
+    color: var(--color-mauve-300);
+  }
+
+  .domain-row[data-active='true'] .title {
+    color: var(--color-lavender-100);
+  }
+
+  .domain-row[data-active='true'] .desc {
+    color: var(--color-lavender-200);
+  }
+
+  .domain-row[data-active='true'] .icon {
+    color: var(--color-mauve-300);
+    transform: scale(1.08) rotate(-4deg);
+  }
+
+  @media (min-width: 1280px) {
+    .domain-row[data-active='true'] .title {
+      transform: translateX(0.75rem);
+    }
+  }
+
+  /* Scène : tous les visuels dans la même cellule, un seul visible */
+  .stage > .stage-item {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(14px) scale(0.985);
+    transition:
+      opacity 0.6s var(--ease-out-expo),
+      transform 0.8s var(--ease-out-expo),
+      visibility 0s 0.6s;
+  }
+
+  .stage > .stage-item[data-active='true'] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stage > .stage-item,
+    .domain-row::before,
+    .domain-row::after {
+      transition: none;
+    }
+  }
+</style>

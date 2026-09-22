@@ -1,0 +1,146 @@
+---
+import { domainNumber } from '@/data/domains';
+import { localizedPath, plural, useTranslations, type Locale } from '@/i18n';
+import { countBy, getProjects } from '@/lib/projects';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProjectCard from '@/components/projects/ProjectCard.astro';
+import Icon from '@/components/ui/Icon.astro';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+
+const projects = await getProjects();
+const counts = countBy(projects);
+const home = localizedPath('/', locale);
+
+// Un seul style pour tous les boutons de filtre.
+const filterClass =
+  'filter-btn rounded-full border border-mauve-300/25 px-4 py-2 font-mono text-[0.72rem] tracking-wider uppercase text-paper-muted transition-colors duration-300 hover:border-mauve-300 hover:text-paper aria-pressed:border-electric-500 aria-pressed:bg-electric-500 aria-pressed:text-paper';
+---
+
+<BaseLayout
+  page="projects"
+  locale={locale}
+  path="/projets/"
+  title={t.meta.projectsTitle}
+  description={t.meta.projectsDescription}
+>
+  <section class="relative pt-40 pb-28 md:pt-52 md:pb-40" aria-labelledby="projects-title">
+    <div class="container-x">
+      <a
+        href={home}
+        class="link-line text-paper-muted hover:text-paper mb-10 inline-flex items-center gap-2 text-sm"
+        data-reveal="fade"
+      >
+        <Icon name="arrow-left" class="size-4" />
+        {t.projects.backHome}
+      </a>
+
+      <p class="eyebrow flex items-center gap-4" data-reveal="fade">
+        <span class="bg-mauve-400/50 h-px w-10"></span>
+        {t.projects.eyebrow}
+      </p>
+      <h1
+        id="projects-title"
+        class="font-display mt-6 text-[clamp(2.2rem,9vw,7.5rem)] leading-[0.94] font-extrabold tracking-[-0.04em] uppercase"
+        data-split="lines"
+      >
+        {t.projects.pageTitle}
+      </h1>
+      <p class="text-paper-muted mt-8 max-w-2xl text-lg" data-reveal>
+        {t.projects.intro}
+      </p>
+
+      {projects.length > 0 ? (
+        <>
+          <div class="mt-16 space-y-6" data-filters data-reveal>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="eyebrow mr-3 !text-[0.66rem]">{t.projects.filterDomain}</span>
+              <button
+                type="button"
+                class={filterClass}
+                data-filter="domaine"
+                data-value=""
+                aria-pressed="true"
+              >
+                {t.projects.filterAll}
+              </button>
+              {counts.domains.map(([slug]) => (
+                <button
+                  type="button"
+                  class={filterClass}
+                  data-filter="domaine"
+                  data-value={slug}
+                  aria-pressed="false"
+                >
+                  {domainNumber(slug)} · {t.domains[slug].title}
+                </button>
+              ))}
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="eyebrow mr-3 !text-[0.66rem]">{t.projects.filterEntity}</span>
+              <button
+                type="button"
+                class={filterClass}
+                data-filter="entite"
+                data-value=""
+                aria-pressed="true"
+              >
+                {t.projects.filterAll}
+              </button>
+              {counts.entities.map(([slug]) => (
+                <button
+                  type="button"
+                  class={filterClass}
+                  data-filter="entite"
+                  data-value={slug}
+                  aria-pressed="false"
+                >
+                  {t.entities[slug].name}
+                </button>
+              ))}
+            </div>
+            <p
+              class="text-paper-faint font-mono text-xs tracking-widest uppercase"
+              data-count
+              data-one={t.projects.resultsCount.one}
+              data-other={t.projects.resultsCount.other}
+              aria-live="polite"
+            >
+              {plural(t.projects.resultsCount, projects.length)}
+            </p>
+          </div>
+
+          <div
+            class="mt-14 columns-1 gap-x-8 md:columns-2 lg:gap-x-12 xl:columns-3"
+            data-projects-grid
+          >
+            {projects.map((project, i) => (
+              <ProjectCard project={project} locale={locale} priority={i < 3} />
+            ))}
+          </div>
+
+          <div class="mt-6 max-w-md border-l border-mauve-400/40 pl-6" data-empty-filtered hidden>
+            <p class="text-paper-muted">{t.projects.emptyFiltered}</p>
+            <button
+              type="button"
+              class="link-line text-lavender-100 mt-4 text-sm font-semibold"
+              data-reset-filters
+              hidden
+            >
+              {t.projects.resetFilters}
+            </button>
+          </div>
+        </>
+      ) : (
+        <p class="text-paper-muted mt-16 max-w-md border-l border-mauve-400/40 pl-6" data-reveal>
+          {t.projects.empty}
+        </p>
+      )}
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,125 @@
+---
+import { entityDomains } from '@/data/entities';
+import { format, localizedPath, useTranslations, type Locale } from '@/i18n';
+import type { EntitySlug } from '@/data/entities';
+import Icon from '@/components/ui/Icon.astro';
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import { site } from '@/config/site';
+
+interface Props {
+  locale: Locale;
+  /** Nombre de projets par entité (le lien « Voir les projets » n'apparaît que s'il y en a). */
+  counts: Map<EntitySlug, number>;
+}
+
+const { locale, counts } = Astro.props;
+const t = useTranslations(locale);
+const projectsPath = localizedPath('/projets/', locale);
+
+const entities = (['clicgraph', 'jeefsys'] as const).map((slug, i) => ({
+  slug,
+  index: String(i + 1).padStart(2, '0'),
+  ...t.entities[slug],
+  domains: entityDomains[slug].map((d) => t.domains[d].title),
+  count: counts.get(slug) ?? 0,
+}));
+---
+
+<section
+  id="ecosysteme"
+  class="relative isolate overflow-hidden py-28 md:py-40"
+  aria-labelledby="ecosysteme-title"
+>
+  <div
+    class="absolute inset-0 -z-10 bg-[radial-gradient(60%_45%_at_50%_62%,var(--color-navy-800)_0%,transparent_100%)] opacity-80"
+    aria-hidden="true"
+  ></div>
+
+  <div class="container-x">
+    <SectionHeading
+      headingId="ecosysteme-title"
+      index="03"
+      eyebrow={t.ecosystem.eyebrow}
+      title={t.ecosystem.title}
+      intro={t.ecosystem.intro}
+    />
+
+    <div class="relative mt-20 md:mt-28" data-connector>
+      <!-- Nœud central : Ibrahima Faye -->
+      <div class="relative z-10 mx-auto flex w-fit flex-col items-center" data-reveal="fade">
+        <span class="border-mauve-300/40 bg-navy-900/80 font-display text-lavender-100 grid size-16 place-items-center rounded-full border text-sm font-bold tracking-wider shadow-[0_0_60px_-10px_var(--color-electric-500)] backdrop-blur">
+          {site.initials}
+        </span>
+        <span class="eyebrow mt-3 !text-[0.66rem]">{site.name}</span>
+      </div>
+
+      <!-- Traits de liaison (desktop) -->
+      <div class="pointer-events-none relative hidden h-24 lg:block" aria-hidden="true">
+        <span class="bg-mauve-400/50 absolute top-0 left-1/2 h-1/2 w-px" data-line="stem"></span>
+        <span
+          class="bg-mauve-400/50 absolute top-1/2 left-1/4 h-px w-1/2"
+          data-line="bar"
+          data-at="<0.3"
+        ></span>
+        <span
+          class="bg-mauve-400/50 absolute top-1/2 left-1/4 h-1/2 w-px"
+          data-line="leg"
+          data-at="<0.55"
+        ></span>
+        <span
+          class="bg-mauve-400/50 absolute top-1/2 left-3/4 h-1/2 w-px"
+          data-line="leg"
+          data-at="<0"
+        ></span>
+      </div>
+      <div class="bg-mauve-400/40 mx-auto h-12 w-px lg:hidden" aria-hidden="true"></div>
+
+      <div class="grid gap-6 lg:grid-cols-2 lg:gap-8">
+        {entities.map((e) => (
+          <article
+            data-panel
+            class="group border-mauve-300/15 from-navy-900/70 to-ink-900/60 relative overflow-hidden rounded-[0.6rem] border bg-gradient-to-br p-8 backdrop-blur-sm transition-colors duration-700 hover:border-mauve-300/40 md:p-11"
+            data-entity={e.slug}
+          >
+            <div
+              class:list={[
+                'pointer-events-none absolute -top-24 -right-24 size-72 rounded-full blur-[90px] transition-opacity duration-700 group-hover:opacity-100',
+                e.slug === 'clicgraph'
+                  ? 'bg-mauve-400/25 opacity-60'
+                  : 'bg-electric-500/30 opacity-60',
+              ]}
+              aria-hidden="true"
+            />
+            <p class="eyebrow flex items-center justify-between">
+              <span>{e.index}</span>
+              <span>{e.role}</span>
+            </p>
+            <h3 class="font-display mt-10 text-[clamp(1.6rem,7vw,3.6rem)] leading-none font-extrabold tracking-[-0.04em] lg:text-[clamp(1.6rem,3.5vw,3.6rem)]">
+              {e.name}
+            </h3>
+            <p class="text-paper-muted mt-6 max-w-md leading-relaxed">{e.description}</p>
+
+            <p class="eyebrow text-paper-faint mt-10 mb-4 !text-[0.66rem]">
+              {t.ecosystem.domainsLabel}
+            </p>
+            <ul class="flex flex-wrap gap-2">
+              {e.domains.map((d) => (
+                <li class="chip">{d}</li>
+              ))}
+            </ul>
+
+            {e.count > 0 && (
+              <a
+                href={`${projectsPath}?entite=${e.slug}`}
+                class="link-line text-lavender-100 mt-10 inline-flex items-center gap-2 text-sm font-semibold"
+              >
+                {format(t.ecosystem.seeProjects, { name: e.name })}
+                <Icon name="arrow-right" class="size-4" />
+              </a>
+            )}
+          </article>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

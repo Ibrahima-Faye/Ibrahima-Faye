@@ -1,0 +1,18 @@
+# Fins de ligne LF partout (Windows / macOS / Linux / CI)
+* text=auto eol=lf
+
+# Médias binaires : jamais de conversion
+*.jpg  binary
+*.jpeg binary
+*.png  binary
+*.webp binary
+*.avif binary
+*.gif  binary
+*.heic binary
+*.heif binary
+*.mp4  binary
+*.webm binary
+*.mov  binary
+*.m4v  binary
+*.woff2 binary
+*.ico  binary

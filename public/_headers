@@ -1,0 +1,11 @@
+# En-têtes HTTP — lus par Cloudflare Pages et Netlify (Vercel utilise vercel.json).
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+
+# Fichiers générés (nom = empreinte du contenu) : cache d'un an.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -1,0 +1,95 @@
+---
+import { Picture } from 'astro:assets';
+import { domainNumber } from '@/data/domains';
+import { localizedPath, useTranslations, format, type Locale } from '@/i18n';
+import { getCover } from '@/lib/media';
+import { projectUrl, type Project } from '@/lib/projects';
+import Icon from '@/components/ui/Icon.astro';
+import ProjectPlaceholder from './ProjectPlaceholder.astro';
+
+interface Props {
+  project: Project;
+  locale?: Locale;
+  /** Image au-dessus de la ligne de flottaison : chargement prioritaire. */
+  priority?: boolean;
+  class?: string;
+}
+
+const { project, locale = 'fr', priority = false, class: className } = Astro.props;
+const t = useTranslations(locale);
+const { data } = project;
+
+const cover = getCover(project);
+// Le cadre reprend EXACTEMENT le ratio de l'image : aucun recadrage.
+const ratio = cover ? cover.width / cover.height : 4 / 3;
+const href = localizedPath(projectUrl(project), locale);
+const domain = t.domains[data.category];
+const brands = data.entity.map((e) => t.entities[e].name).join(' · ');
+---
+
+<article
+  class:list={['project-card group mb-10 break-inside-avoid', className]}
+  data-project-card
+  data-category={data.category}
+  data-entity={data.entity.join(' ')}
+  data-reveal
+>
+  <a href={href} class="block">
+    <div
+      class="frame bg-navy-950 relative overflow-hidden rounded-[0.4rem] ring-1 ring-white/[0.07] transition-shadow duration-700 group-hover:ring-mauve-300/40"
+      style={`aspect-ratio:${ratio.toFixed(4)}`}
+    >
+      {cover ? (
+        <Picture
+          src={cover}
+          alt={data.coverAlt ?? format(t.projects.coverAlt, { title: data.title })}
+          formats={['avif', 'webp']}
+          widths={[480, 800, 1200, 1600]}
+          sizes="(min-width: 1280px) 30vw, (min-width: 768px) 46vw, 92vw"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchpriority={priority ? 'high' : 'auto'}
+          pictureAttributes={{ class: 'block size-full' }}
+          class="size-full object-cover transition-transform duration-[1400ms] ease-[var(--ease-out-expo)] group-hover:scale-[1.045]"
+        />
+      ) : (
+        <>
+          <ProjectPlaceholder
+            seed={project.id}
+            class="size-full transition-transform duration-[1400ms] ease-[var(--ease-out-expo)] group-hover:scale-[1.045]"
+          />
+          <span class="eyebrow border-mauve-300/30 bg-ink-950/70 absolute top-3 left-3 rounded-full border px-3 py-1.5 !text-[0.6rem] backdrop-blur-md">
+            {t.projects.placeholder}
+          </span>
+        </>
+      )}
+      <div class="from-ink-950/70 pointer-events-none absolute inset-0 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-700 group-hover:opacity-100"></div>
+      <span
+        class="border-mauve-300/40 bg-ink-950/60 text-lavender-100 absolute top-3 right-3 grid size-10 translate-y-2 place-items-center rounded-full border opacity-0 backdrop-blur-md transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100"
+        aria-hidden="true"
+      >
+        <Icon name="arrow-up-right" class="size-4" />
+      </span>
+      {data.draft && (
+        <span class="eyebrow bg-ink-950/85 absolute bottom-3 left-3 rounded-full px-3 py-1.5 !text-[0.62rem] backdrop-blur-md">
+          {t.projects.draftBadge}
+        </span>
+      )}
+    </div>
+
+    <div class="mt-5">
+      <p class="eyebrow flex items-center justify-between gap-4 !text-[0.66rem]">
+        <span class="truncate">
+          {domainNumber(data.category)} — {domain.title}
+        </span>
+        {data.year && <span class="text-paper-faint shrink-0">{data.year}</span>}
+      </p>
+      <h3 class="font-display group-hover:text-lavender-100 mt-2.5 text-[clamp(1.35rem,1.1rem+0.9vw,1.85rem)] leading-[1.08] font-bold tracking-tight transition-colors duration-500">
+        {data.title}
+      </h3>
+      {data.summary && (
+        <p class="text-paper-muted mt-2.5 text-[0.95rem] leading-relaxed">{data.summary}</p>
+      )}
+      <p class="text-paper-faint mt-3 text-xs tracking-wide">{brands}</p>
+    </div>
+  </a>
+</article>

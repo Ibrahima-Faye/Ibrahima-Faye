@@ -1,0 +1,104 @@
+---
+import { localizedPath, useTranslations, type Locale } from '@/i18n';
+import { site } from '@/config/site';
+
+interface Props {
+  locale: Locale;
+  /** Identifiant de la page courante (voir BaseLayout). */
+  current?: string;
+}
+
+const { locale, current } = Astro.props;
+const t = useTranslations(locale);
+const home = localizedPath('/', locale);
+
+/** `id` = identifiant de la section sur la page d'accueil (surlignage au scroll). */
+const links = [
+  { id: 'expertises', label: t.nav.expertises, href: `${home}#expertises` },
+  { id: 'projets', label: t.nav.projects, href: `${home}#projets` },
+  { id: 'ecosysteme', label: t.nav.ecosystem, href: `${home}#ecosysteme` },
+  { id: 'a-propos', label: t.nav.about, href: `${home}#a-propos` },
+];
+const contact = { id: 'contact', label: t.nav.contact, href: `${home}#contact` };
+const isProjectsPage = current === 'projects' || current === 'project';
+---
+
+<header
+  data-header
+  data-scrolled="false"
+  class="data-[scrolled=true]:bg-ink-950/75 fixed inset-x-0 top-0 z-50 border-b border-transparent transition-[background-color,border-color] duration-500 data-[scrolled=true]:border-white/[0.06] data-[scrolled=true]:backdrop-blur-xl"
+>
+  <div class="container-x flex h-[4.5rem] items-center justify-between gap-6">
+    <a href={home} class="group flex items-center gap-3" aria-label={t.a11y.home}>
+      <span
+        class="border-mauve-300/40 bg-navy-900/60 font-display text-lavender-100 group-hover:border-mauve-300 grid size-9 place-items-center rounded-full border text-[0.7rem] font-bold tracking-wider transition-colors duration-500"
+        aria-hidden="true"
+      >
+        {site.initials}
+      </span>
+      <span class="font-display hidden text-[0.8rem] font-bold tracking-[0.22em] uppercase sm:block">
+        {site.name}
+      </span>
+    </a>
+
+    <nav class="hidden items-center gap-9 md:flex" aria-label={t.a11y.mainNav}>
+      {links.map((l) => (
+        <a
+          href={l.href}
+          data-nav-link={l.id}
+          data-active={isProjectsPage && l.id === 'projets' ? 'true' : 'false'}
+          class="link-line text-paper-muted hover:text-paper data-[active=true]:text-paper py-1 text-[0.82rem] font-medium tracking-wide transition-colors"
+        >
+          {l.label}
+        </a>
+      ))}
+      <a
+        href={contact.href}
+        class="btn btn-ghost !px-5 !py-2.5 !text-[0.8rem]"
+        data-nav-link={contact.id}
+      >
+        {contact.label}
+      </a>
+    </nav>
+
+    <button
+      type="button"
+      class="border-mauve-300/30 relative grid size-11 place-items-center rounded-full border md:hidden"
+      data-menu-toggle
+      aria-expanded="false"
+      aria-controls="mobile-menu"
+      aria-label={t.a11y.openMenu}
+      data-label-open={t.a11y.openMenu}
+      data-label-close={t.a11y.closeMenu}
+    >
+      <span class="relative block h-3 w-5" aria-hidden="true">
+        <span class="bg-paper absolute top-0 left-0 h-px w-full transition-transform duration-500 [[aria-expanded=true]_&]:translate-y-[6px] [[aria-expanded=true]_&]:rotate-45"></span>
+        <span class="bg-paper absolute bottom-0 left-0 h-px w-full transition-transform duration-500 [[aria-expanded=true]_&]:-translate-y-[5px] [[aria-expanded=true]_&]:-rotate-45"></span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Menu mobile plein écran -->
+  <div
+    id="mobile-menu"
+    data-menu-panel
+    hidden
+    class="bg-ink-950/95 fixed inset-0 top-[4.5rem] z-40 overflow-y-auto backdrop-blur-2xl md:hidden"
+  >
+    <nav
+      class="container-x flex min-h-full flex-col justify-center gap-2 py-10"
+      aria-label={t.a11y.mainNav}
+    >
+      {[...links, contact].map((l, i) => (
+        <a
+          href={l.href}
+          data-menu-link
+          class="font-display border-b border-white/[0.07] py-4 text-4xl font-bold tracking-tight uppercase"
+        >
+          <span class="eyebrow mr-4 align-middle">{String(i + 1).padStart(2, '0')}</span>
+          {l.label}
+        </a>
+      ))}
+    </nav>
+  </div>
+</header>

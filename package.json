@@ -1,0 +1,44 @@
+{
+  "name": "ibrahima-faye-portfolio",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portfolio officiel d'Ibrahima Faye — créateur technologique (ClicGraph · JeeFSYS)",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "format": "prettier --write .",
+    "astro": "astro",
+    "projet": "node scripts/new-project.mjs",
+    "sauvegarde": "node scripts/snapshot.mjs",
+    "sauvegarde:restaurer": "node scripts/restore-snapshot.mjs"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/syne": "^5.3.0",
+    "astro": "^7.3.3",
+    "gsap": "^3.15.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/sortablejs": "^1.15.9",
+    "prettier": "^3.9.8",
+    "prettier-plugin-astro": "^1.0.1",
+    "sortablejs": "^1.15.7",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.0",
+    "yaml": "^2.9.1"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "sharp": true
+  }
+}

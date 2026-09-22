@@ -1,0 +1,312 @@
+---
+import { Picture, getImage } from 'astro:assets';
+import { render } from 'astro:content';
+import { domainNumber } from '@/data/domains';
+import { format, localizedPath, useTranslations, type Locale } from '@/i18n';
+import { site } from '@/config/site';
+import { getCover, getProjectMedia, projectFolder } from '@/lib/media';
+import { getProjects, neighbours, projectUrl, type Project } from '@/lib/projects';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Gallery from '@/components/gallery/Gallery.astro';
+import Icon from '@/components/ui/Icon.astro';
+import ProjectPlaceholder from '@/components/projects/ProjectPlaceholder.astro';
+
+interface Props {
+  locale: Locale;
+  project: Project;
+}
+
+const { locale, project } = Astro.props;
+const t = useTranslations(locale);
+const { data } = project;
+
+const [{ Content }, media, all] = await Promise.all([
+  render(project),
+  getProjectMedia(project, {
+    imageAlt: (n) => format(t.projects.imageAlt, { title: data.title, n }),
+    videoAlt: (n) => format(t.projects.videoAlt, { title: data.title, n }),
+  }),
+  getProjects(),
+]);
+
+const cover = getCover(project);
+const coverAlt = data.coverAlt ?? format(t.projects.coverAlt, { title: data.title });
+const { previous, next } = neighbours(all, project);
+const domain = t.domains[data.category];
+const brands = data.entity.map((e) => t.entities[e].name).join(' · ');
+const hasBody = Boolean(project.body?.replace(/<!--[\s\S]*?-->/g, '').trim());
+const projectsPath = localizedPath('/projets/', locale);
+
+// Partage : la couverture optimisée sert d'image Open Graph.
+let ogImage: string | undefined;
+if (cover) {
+  ogImage = (
+    await getImage({
+      src: cover,
+      width: 1200,
+      height: Math.round(1200 * (cover.height / cover.width)),
+      format: 'jpg',
+    })
+  ).src;
+}
+
+const origin = new URL('/', Astro.site).href;
+const jsonLd = {
+  '@type': 'CreativeWork',
+  name: data.title,
+  ...(data.summary ? { description: data.summary } : {}),
+  ...(data.year ? { dateCreated: String(data.year) } : {}),
+  ...(ogImage ? { image: new URL(ogImage, Astro.site).href } : {}),
+  keywords: [domain.title, ...data.technologies].join(', '),
+  creator: { '@type': 'Person', name: site.name, url: origin },
+  inLanguage: t.meta.lang,
+};
+
+const meta = [
+  { label: t.projects.labelEntity, value: brands },
+  { label: t.projects.labelDomain, value: `${domainNumber(data.category)} — ${domain.title}` },
+  data.year ? { label: t.projects.labelYear, value: String(data.year) } : undefined,
+  data.status ? { label: t.projects.labelStatus, value: t.statuses[data.status] } : undefined,
+  data.role ? { label: t.projects.labelRole, value: data.role } : undefined,
+  data.client ? { label: t.projects.labelClient, value: data.client } : undefined,
+].filter((m): m is { label: string; value: string } => Boolean(m));
+---
+
+<BaseLayout
+  page="project"
+  locale={locale}
+  path={projectUrl(project)}
+  title={data.title}
+  description={data.summary}
+  image={ogImage}
+  imageAlt={cover ? coverAlt : undefined}
+  type="article"
+  noindex={data.draft}
+  jsonLd={jsonLd}
+>
+  <article>
+    <!-- En-tête -->
+    <header class="relative pt-36 pb-14 md:pt-48 md:pb-20">
+      <div class="container-x">
+        <a
+          href={projectsPath}
+          class="link-line text-paper-muted hover:text-paper mb-10 inline-flex items-center gap-2 text-sm"
+          data-reveal="fade"
+        >
+          <Icon name="arrow-left" class="size-4" />
+          {t.projects.back}
+        </a>
+
+        <p class="eyebrow flex flex-wrap items-center gap-x-4 gap-y-1" data-reveal="fade">
+          <span>{brands}</span>
+          <span class="bg-mauve-400/50 h-px w-8"></span>
+          <span>{domain.title}</span>
+          {data.year && <span class="text-paper-faint">{data.year}</span>}
+        </p>
+
+        <h1
+          class="font-display mt-6 max-w-6xl text-[clamp(1.7rem,7vw,5.4rem)] leading-[0.98] font-extrabold tracking-[-0.04em] uppercase"
+          data-split="lines"
+        >
+          {data.title}
+        </h1>
+
+        {data.summary && (
+          <p class="text-paper-muted mt-8 max-w-2xl text-xl leading-relaxed" data-reveal>
+            {data.summary}
+          </p>
+        )}
+
+        {data.draft && (
+          <p class="border-mauve-400/50 text-paper-muted mt-8 max-w-xl border-l pl-5 text-sm">
+            {t.projects.draftNotice}
+          </p>
+        )}
+      </div>
+    </header>
+
+    <!-- Image principale : ratio d'origine, jamais recadrée. Un fond flouté de la même image comble l'espace. -->
+    <div class="relative isolate overflow-hidden" data-reveal="mask">
+      {cover ? (
+        <>
+          <Picture
+            src={cover}
+            alt=""
+            formats={['webp']}
+            widths={[240]}
+            sizes="100vw"
+            pictureAttributes={{ class: 'absolute inset-0 -z-10 block' }}
+            class="size-full scale-125 object-cover opacity-45 blur-3xl saturate-150"
+            aria-hidden="true"
+          />
+          <div class="container-x py-8 md:py-14">
+            <Picture
+              src={cover}
+              alt={coverAlt}
+              formats={['avif', 'webp']}
+              widths={[800, 1200, 1800, 2400]}
+              sizes="(min-width: 1536px) 1400px, 92vw"
+              loading="eager"
+              fetchpriority="high"
+              pictureAttributes={{ class: 'block w-fit max-w-full mx-auto' }}
+              class="mx-auto h-auto max-h-[82svh] w-auto max-w-full rounded-[0.4rem] shadow-[0_40px_120px_-30px_rgb(0_0_0/0.85)] ring-1 ring-white/10"
+            />
+          </div>
+        </>
+      ) : (
+        <div class="container-x">
+          <div class="relative aspect-[21/9] overflow-hidden rounded-[0.4rem] ring-1 ring-white/10">
+            <ProjectPlaceholder seed={project.id} class="size-full" />
+            <p class="eyebrow border-mauve-300/30 bg-ink-950/70 absolute bottom-4 left-4 rounded-full border px-4 py-2 !text-[0.66rem] backdrop-blur-md">
+              {t.projects.placeholder} — {t.projects.placeholderCover}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+
+    <!-- Informations + description -->
+    <section class="py-20 md:py-32">
+      <div class="container-x grid gap-16 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-24">
+        <div>
+          {(data.context || data.result) && (
+            <div class="mb-14 grid gap-10 border-t border-white/10 pt-10 md:mb-20 md:grid-cols-2 md:gap-14">
+              {data.context && (
+                <div data-reveal>
+                  <p class="eyebrow">{t.projects.labelContext}</p>
+                  <p class="text-lavender-100 mt-4 text-lg leading-relaxed md:text-xl">
+                    {data.context}
+                  </p>
+                </div>
+              )}
+              {data.result && (
+                <div data-reveal>
+                  <p class="eyebrow">{t.projects.labelResult}</p>
+                  <p class="text-lavender-100 mt-4 text-lg leading-relaxed md:text-xl">
+                    {data.result}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          {hasBody ? (
+            <div class="prose-project" data-reveal>
+              <Content />
+            </div>
+          ) : (
+            <p class="text-paper-muted max-w-xl text-lg" data-reveal>
+              {t.projects.noDescription}
+            </p>
+          )}
+        </div>
+
+        <aside class="lg:sticky lg:top-28 lg:self-start" data-reveal>
+          <dl class="border-t border-white/10">
+            {meta.map((m) => (
+              <div class="grid grid-cols-[6.5rem_1fr] gap-4 border-b border-white/10 py-4">
+                <dt class="eyebrow !text-[0.66rem] !leading-[1.9]">{m.label}</dt>
+                <dd class="text-lavender-100">{m.value}</dd>
+              </div>
+            ))}
+            {data.technologies.length > 0 && (
+              <div class="border-b border-white/10 py-4">
+                <dt class="eyebrow mb-3 !text-[0.66rem]">{t.projects.labelTechnologies}</dt>
+                <dd>
+                  <ul class="flex flex-wrap gap-2">
+                    {data.technologies.map((tech) => (
+                      <li class="chip">{tech}</li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            )}
+            {data.links.length > 0 && (
+              <div class="py-4">
+                <dt class="eyebrow mb-3 !text-[0.66rem]">{t.projects.labelLinks}</dt>
+                <dd>
+                  <ul class="space-y-2">
+                    {data.links.map((link) => (
+                      <li>
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="link-line text-mauve-300 hover:text-lavender-100 inline-flex items-center gap-2"
+                        >
+                          {link.label}
+                          <span class="sr-only">{t.a11y.externalLink}</span>
+                          <Icon name="arrow-up-right" class="size-4" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Galerie -->
+    {media.length > 0 && (
+      <section class="pb-24 md:pb-36" aria-labelledby="gallery-title">
+        <div class="container-x">
+          <h2 id="gallery-title" class="display-lg mb-10 md:mb-14" data-split="lines">
+            {t.projects.gallery}
+          </h2>
+          <Gallery media={media} locale={locale} />
+        </div>
+      </section>
+    )}
+
+    <!-- Emplacement de galerie : visible uniquement en développement, tant qu'il n'y a aucun média -->
+    {media.length === 0 && import.meta.env.DEV && (
+      <section class="pb-24 md:pb-36" aria-labelledby="slot-title">
+        <div class="container-x">
+          <div class="border-mauve-300/30 rounded-[0.5rem] border border-dashed p-8 md:p-12">
+            <p class="eyebrow">{t.projects.placeholder}</p>
+            <h2 id="slot-title" class="display-lg mt-4">
+              {t.projects.slotTitle}
+            </h2>
+            <p class="text-paper-muted mt-5 max-w-2xl">{t.projects.slotText}</p>
+            <p class="chip mt-6">src/content/projects/{projectFolder(project)}/</p>
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- Projet précédent / suivant -->
+    {previous && next && (
+      <nav
+        class="border-t border-white/[0.08]"
+        aria-label={`${t.projects.previous} / ${t.projects.next}`}
+      >
+        <div class="container-x grid grid-cols-[minmax(0,1fr)] gap-px md:grid-cols-2">
+          {[
+            { p: previous, label: t.projects.previous, icon: 'arrow-left' as const },
+            { p: next, label: t.projects.next, icon: 'arrow-right' as const },
+          ].map(({ p, label, icon }, i) => (
+            <a
+              href={localizedPath(projectUrl(p), locale)}
+              class:list={[
+                'group flex min-w-0 items-center justify-between gap-6 py-10 md:py-16',
+                i === 1 && 'md:flex-row-reverse md:text-right',
+              ]}
+            >
+              <span class="text-mauve-300 group-hover:text-lavender-100 transition-transform duration-500 group-hover:scale-125">
+                <Icon name={icon} class="size-7" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="eyebrow block !text-[0.66rem]">{label}</span>
+                <span class="font-display group-hover:text-lavender-100 mt-2 block truncate text-[clamp(1.4rem,3vw,2.6rem)] font-bold tracking-tight uppercase transition-colors">
+                  {p.data.title}
+                </span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </nav>
+    )}
+  </article>
+</BaseLayout>

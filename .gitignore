@@ -1,0 +1,62 @@
+# build output
+dist/
+
+# generated types & caches
+.astro/
+.vercel/
+.netlify/
+.wrangler/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# environment variables (garder .env.example)
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Claude Code : réglages locaux uniquement
+.claude/settings.local.json
+
+# Corbeille de l'administration locale (suppressions récupérables)
+.trash/
+
+# Sauvegardes instantanées (npm run sauvegarde) : à copier ailleurs, jamais dans git
+/backups/
+
+# Originaux haute résolution : conservés sur cette machine, sauvegarde séparée (jamais dans git)
+/media/
+
+# Secrets de l'administration (mot de passe haché, sessions)
+/.cms/
+
+# TEMPORAIRE : les médias des projets ne sont pas encore versionnés.
+# Après la migration des médias (originaux → media/, versions web optimisées ici), ces lignes seront retirées.
+src/content/projects/**/*.jpg
+src/content/projects/**/*.jpeg
+src/content/projects/**/*.png
+src/content/projects/**/*.webp
+src/content/projects/**/*.avif
+src/content/projects/**/*.gif
+src/content/projects/**/*.heic
+src/content/projects/**/*.heif
+src/content/projects/**/*.mp4
+src/content/projects/**/*.webm
+src/content/projects/**/*.mov
+src/content/projects/**/*.m4v

@@ -1,0 +1,29 @@
+---
+interface Props {
+  eyebrow: string;
+  title: string;
+  intro?: string;
+  /** Numéro de section affiché en filigrane, ex. « 02 » */
+  index?: string;
+  class?: string;
+  headingId?: string;
+}
+
+const { eyebrow, title, intro, index, class: className = '', headingId } = Astro.props;
+---
+
+<header class:list={['relative max-w-4xl', className]}>
+  <p class="eyebrow flex items-center gap-4" data-reveal="fade">
+    {index && <span class="text-paper-faint">{index}</span>}
+    <span class="h-px w-10 bg-mauve-400/50"></span>
+    <span>{eyebrow}</span>
+  </p>
+  <h2 id={headingId} class="display-lg mt-6" data-split="lines">
+    {title}
+  </h2>
+  {intro && (
+    <p class="text-paper-muted mt-6 max-w-2xl text-lg leading-relaxed" data-reveal>
+      {intro}
+    </p>
+  )}
+</header>

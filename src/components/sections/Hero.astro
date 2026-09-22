@@ -1,0 +1,145 @@
+---
+import { localizedPath, useTranslations, type Locale } from '@/i18n';
+import { site } from '@/config/site';
+import Button from '@/components/ui/Button.astro';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+const [firstName = '', ...rest] = site.name.split(' ');
+const lastName = rest.join(' ');
+const parts = t.hero.subtitle.split(' · ');
+const home = localizedPath('/', locale);
+---
+
+<section
+  data-hero
+  class="relative isolate min-h-[100svh] overflow-hidden"
+  aria-labelledby="hero-title"
+>
+  <!-- Fond : profondeur navy → noir bleuté, halo violet -->
+  <div
+    class="absolute inset-0 -z-30 bg-[radial-gradient(120%_90%_at_78%_8%,var(--color-navy-800)_0%,var(--color-navy-900)_32%,var(--color-ink-950)_72%)]"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="bg-electric-500/25 pointer-events-none absolute -top-56 -right-48 -z-20 size-[52rem] rounded-full blur-[140px]"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="bg-mauve-400/10 pointer-events-none absolute bottom-[-18rem] -left-40 -z-20 size-[40rem] rounded-full blur-[130px]"
+    aria-hidden="true"
+  ></div>
+
+  <!-- Champ filaire 3D (Canvas 2D, voir src/scripts/hero-field.ts) -->
+  <div class="absolute inset-0 -z-10" aria-hidden="true">
+    <canvas data-hero-canvas class="size-full"></canvas>
+  </div>
+  <!-- Voiles : lisibilité du texte + fondu vers la section suivante -->
+  <div
+    class="from-ink-950/85 via-ink-950/35 pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r to-transparent"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="from-ink-950 pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-56 bg-gradient-to-t to-transparent"
+    aria-hidden="true"
+  ></div>
+
+  <div
+    data-hero-content
+    class="container-x relative flex min-h-[100svh] flex-col justify-center pt-28 pb-36"
+  >
+    <p class="eyebrow mb-8 flex items-center gap-4" data-intro="fade">
+      <span class="bg-mauve-400/60 h-px w-12"></span>
+      {t.hero.eyebrow}
+    </p>
+
+    <h1
+      id="hero-title"
+      data-hero-name
+      data-intro
+      class="display-xl text-[clamp(2.2rem,7.6vw,8.6rem)]"
+    >
+      <span class="block sm:inline">{firstName}</span>{' '}
+      <span class="block sm:inline">{lastName}</span>
+    </h1>
+
+    <p class="font-display mt-8 text-[clamp(1.65rem,4.3vw,4.1rem)] leading-[1.02] font-extrabold tracking-[-0.03em] uppercase md:mt-10">
+      {t.hero.lines.map((line, i) => (
+        <span class="block overflow-hidden pb-[0.14em]">
+          <span
+            data-hero-line
+            data-intro
+            class:list={['block', i === t.hero.lines.length - 1 && 'text-gradient']}
+          >
+            {line}
+          </span>
+        </span>
+      ))}
+    </p>
+
+    <p
+      class="text-paper-muted mt-9 flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.7rem] tracking-[0.16em] uppercase sm:text-xs"
+      data-intro="fade"
+    >
+      {parts.map((part, i) => (
+        <>
+          {i > 0 && (
+            <span class="text-electric-400" aria-hidden="true">
+              ·
+            </span>
+          )}
+          <span>{part}</span>
+        </>
+      ))}
+    </p>
+
+    <div class="mt-11 flex flex-wrap items-center gap-4" data-intro="fade">
+      <Button href={`${home}#projets`}>{t.hero.ctaProjects}</Button>
+      <Button href={`${home}#contact`} variant="ghost" icon="arrow-up-right">
+        {t.hero.ctaContact}
+      </Button>
+    </div>
+  </div>
+
+  <!-- Repères bas de page -->
+  <div
+    class="container-x pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between pb-8"
+    data-intro="fade"
+  >
+    <div class="text-paper-faint flex items-center gap-4 font-mono text-[0.68rem] tracking-[0.22em] uppercase">
+      <span class="relative block h-12 w-px overflow-hidden bg-white/15" aria-hidden="true">
+        <span class="scroll-cue bg-mauve-300 absolute inset-x-0 top-0 block h-1/2"></span>
+      </span>
+      {t.hero.scroll}
+    </div>
+    <p class="text-paper-faint hidden font-mono text-[0.68rem] tracking-[0.22em] uppercase sm:block">
+      {t.hero.entitiesLabel}
+    </p>
+  </div>
+</section>
+
+<style>
+  @keyframes cue {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(220%);
+    }
+  }
+
+  .scroll-cue {
+    animation: cue 2.2s var(--ease-in-out-quart) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-cue {
+      animation: none;
+      transform: none;
+    }
+  }
+</style>

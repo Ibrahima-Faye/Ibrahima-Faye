@@ -1,0 +1,35 @@
+---
+import { domainSlugs } from '@/data/domains';
+import { useTranslations, type Locale } from '@/i18n';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+const titles = domainSlugs.map((slug) => t.domains[slug].title);
+---
+
+<!-- Bandeau décoratif : les 7 domaines en défilement continu (pause si mouvement réduit). -->
+<div class="relative overflow-hidden border-y border-white/[0.07] py-6 md:py-8" aria-hidden="true">
+  <div class="marquee-track">
+    {[0, 1].map(() => (
+      <ul class="flex shrink-0 items-center">
+        {titles.map((title, i) => (
+          <li class="flex items-center">
+            <span
+              class:list={[
+                'font-display px-6 text-[clamp(1.8rem,4.2vw,3.6rem)] font-extrabold tracking-tight whitespace-nowrap uppercase md:px-10',
+                i % 2 === 0 ? 'text-outline' : 'text-lavender-100',
+              ]}
+            >
+              {title}
+            </span>
+            <span class="bg-electric-400 size-1.5 rotate-45" />
+          </li>
+        ))}
+      </ul>
+    ))}
+  </div>
+</div>

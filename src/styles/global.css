@@ -1,0 +1,479 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/syne';
+@import '@fontsource-variable/manrope';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* ==========================================================================
+   Design tokens — direction artistique :
+   premium · futuriste · cinématique · technologique · architectural · sombre
+   `static` : toutes les variables existent toujours (utilisables dans var(--…)).
+   ========================================================================== */
+@theme static {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* noir bleuté / navy profond */
+  --color-ink-950: #04050d;
+  --color-ink-900: #070914;
+  --color-navy-950: #070b1e;
+  --color-navy-900: #0b1233;
+  --color-navy-800: #111a49;
+  --color-navy-700: #1b2670;
+
+  /* violet électrique */
+  --color-electric-600: #6236e8;
+  --color-electric-500: #7b4dff;
+  --color-electric-400: #9367ff;
+
+  /* mauve & lavande */
+  --color-mauve-400: #b58cff;
+  --color-mauve-300: #c8a9ff;
+  --color-lavender-200: #ddd2ff;
+  --color-lavender-100: #ece6ff;
+
+  /* blanc cassé */
+  --color-paper: #f3f0f8;
+  --color-paper-muted: #b4b1cc;
+  --color-paper-faint: #7d7ba0;
+
+  --font-display: 'Syne Variable', 'Manrope Variable', system-ui, sans-serif;
+  --font-sans: 'Manrope Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+@layer base {
+  html {
+    background-color: var(--color-ink-950);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: 5.5rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    background-color: var(--color-ink-950);
+    min-height: 100svh;
+    overflow-x: clip;
+    font-size: 1rem;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Grain cinématographique, statique donc peu coûteux. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  ::selection {
+    background: var(--color-electric-500);
+    color: var(--color-paper);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-mauve-300);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    /* filet de sécurité : un mot très long ne doit jamais déborder de l'écran */
+    overflow-wrap: anywhere;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  /* Barre de défilement discrète (Chromium / Firefox) */
+  html {
+    scrollbar-color: var(--color-electric-600) var(--color-ink-950);
+    scrollbar-width: thin;
+  }
+
+  /* Verrouille le scroll quand la visionneuse ou le menu mobile est ouvert */
+  html:has(dialog[open]),
+  html[data-menu-open='true'] {
+    overflow: hidden;
+  }
+}
+
+/* ==========================================================================
+   Utilitaires & composants transverses
+   ========================================================================== */
+@utility container-x {
+  width: 100%;
+  max-width: 96rem;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 4.5vw, 4rem);
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--color-mauve-300);
+}
+
+@utility text-gradient {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-lavender-100) 0%,
+    var(--color-mauve-400) 45%,
+    var(--color-electric-400) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Titre d'affichage (Syne) — tailles fluides */
+@utility display-xl {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+}
+
+@utility display-lg {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 5.4vw, 4.75rem);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+/* Boutons ------------------------------------------------------------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.95rem 1.6rem;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 0.5s var(--ease-out-expo),
+    box-shadow 0.5s var(--ease-out-expo),
+    border-color 0.3s,
+    background-color 0.3s;
+}
+
+.btn > svg {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.5s var(--ease-out-expo);
+}
+
+.btn:hover > svg {
+  transform: translateX(4px);
+}
+
+.btn-primary {
+  color: var(--color-paper);
+  background: linear-gradient(120deg, var(--color-electric-600), var(--color-electric-400));
+  box-shadow:
+    0 0 0 1px rgb(200 169 255 / 0.25) inset,
+    0 10px 40px -10px rgb(123 77 255 / 0.65);
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(120deg, var(--color-electric-400), var(--color-mauve-400));
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.btn-primary:hover::before {
+  opacity: 1;
+}
+
+.btn-primary:hover {
+  box-shadow:
+    0 0 0 1px rgb(236 230 255 / 0.4) inset,
+    0 14px 50px -8px rgb(147 103 255 / 0.85);
+}
+
+.btn-ghost {
+  color: var(--color-paper);
+  border: 1px solid rgb(200 169 255 / 0.28);
+  background: rgb(11 18 51 / 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.btn-ghost:hover {
+  border-color: var(--color-mauve-300);
+  background: rgb(123 77 255 / 0.14);
+}
+
+/* Lien avec soulignement animé */
+.link-line {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.5s var(--ease-out-expo);
+}
+
+.link-line:hover,
+.link-line:focus-visible {
+  background-size: 100% 1px;
+}
+
+/* Puces / tags */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.32rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgb(200 169 255 / 0.2);
+  background: rgb(123 77 255 / 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--color-lavender-200);
+  line-height: 1.2;
+}
+
+/* Réglet vertical de section (fond) */
+.section-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(200 169 255 / 0.3), transparent);
+}
+
+/* ==========================================================================
+   Animations : états initiaux (révélés ensuite par GSAP).
+   - Uniquement si l'utilisateur n'a pas demandé de réduire les animations.
+   - `data-motion="off"` (posé par le script en cas d'erreur) et <noscript>
+     garantissent que le contenu reste toujours visible.
+   ========================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+  /* Le CSS ne pose QUE l'opacité : le mouvement appartient à GSAP (motion.ts).
+     Un transform ici réapparaîtrait quand GSAP nettoie ses styles en ligne. */
+  [data-reveal] {
+    opacity: 0;
+  }
+
+  [data-reveal='mask'] {
+    opacity: 1;
+    clip-path: inset(0 0 100% 0);
+  }
+
+  [data-split],
+  [data-intro] {
+    opacity: 0;
+  }
+}
+
+html[data-motion='off'] [data-reveal],
+html[data-motion='off'] [data-split],
+html[data-motion='off'] [data-intro] {
+  opacity: 1 !important;
+  transform: none !important;
+  clip-path: none !important;
+}
+
+/* Marquee : défilement CSS pur (pause si mouvement réduit) */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 60s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* Texte contouré (marquee, grands chiffres) */
+.text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px rgb(200 169 255 / 0.4);
+}
+
+/* ==========================================================================
+   Prose — description Markdown d'un projet
+   ========================================================================== */
+.prose-project {
+  color: var(--color-paper-muted);
+  font-size: clamp(1.02rem, 0.95rem + 0.3vw, 1.18rem);
+  line-height: 1.8;
+  max-width: 68ch;
+}
+
+.prose-project > * + * {
+  margin-top: 1.25em;
+}
+
+.prose-project h2,
+.prose-project h3 {
+  color: var(--color-paper);
+  margin-top: 2.2em;
+  font-size: clamp(1.4rem, 1.2rem + 1vw, 2rem);
+}
+
+.prose-project h3 {
+  font-size: clamp(1.15rem, 1.05rem + 0.6vw, 1.45rem);
+}
+
+.prose-project strong {
+  color: var(--color-paper);
+  font-weight: 600;
+}
+
+.prose-project a {
+  color: var(--color-mauve-300);
+  text-decoration: underline;
+  text-decoration-color: rgb(200 169 255 / 0.35);
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 0.3s;
+}
+
+.prose-project a:hover {
+  text-decoration-color: var(--color-mauve-300);
+}
+
+.prose-project ul,
+.prose-project ol {
+  padding-left: 1.3em;
+}
+
+.prose-project ul {
+  list-style: none;
+}
+
+.prose-project ul > li {
+  position: relative;
+}
+
+.prose-project ul > li::before {
+  content: '';
+  position: absolute;
+  left: -1.1em;
+  top: 0.8em;
+  width: 0.45em;
+  height: 1px;
+  background: var(--color-mauve-400);
+}
+
+.prose-project ol {
+  list-style: decimal;
+}
+
+.prose-project li + li {
+  margin-top: 0.4em;
+}
+
+.prose-project blockquote {
+  border-left: 2px solid var(--color-electric-500);
+  padding-left: 1.2em;
+  color: var(--color-lavender-200);
+  font-style: italic;
+}
+
+.prose-project code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 0.15em 0.4em;
+  border-radius: 0.3em;
+  background: rgb(123 77 255 / 0.14);
+  color: var(--color-lavender-100);
+}
+
+.prose-project pre {
+  overflow-x: auto;
+  padding: 1.1em 1.3em;
+  border-radius: 0.6em;
+  background: var(--color-navy-950);
+  border: 1px solid rgb(200 169 255 / 0.14);
+}
+
+.prose-project pre code {
+  padding: 0;
+  background: none;
+}
+
+.prose-project img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.prose-project hr {
+  border: 0;
+  height: 1px;
+  background: rgb(200 169 255 / 0.2);
+  margin-block: 2.5em;
+}

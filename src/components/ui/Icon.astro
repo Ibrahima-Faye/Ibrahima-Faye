@@ -1,0 +1,57 @@
+---
+/**
+ * Icônes utilitaires (trait fin, 24×24). Décoratives par défaut (aria-hidden) :
+ * le texte accessible est porté par le bouton / lien parent.
+ */
+export type IconName =
+  | 'arrow-right'
+  | 'arrow-left'
+  | 'arrow-up-right'
+  | 'arrow-up'
+  | 'close'
+  | 'chevron-left'
+  | 'chevron-right'
+  | 'play'
+  | 'expand'
+  | 'collapse'
+  | 'mail'
+  | 'phone'
+  | 'message';
+
+interface Props {
+  name: IconName;
+  class?: string;
+}
+
+const { name, class: className } = Astro.props;
+
+const paths: Record<IconName, string> = {
+  'arrow-right': '<path d="M4 12h16M14 6l6 6-6 6"/>',
+  'arrow-left': '<path d="M20 12H4M10 6l-6 6 6 6"/>',
+  'arrow-up-right': '<path d="M7 17 17 7M8 7h9v9"/>',
+  'arrow-up': '<path d="M12 20V4M6 10l6-6 6 6"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  'chevron-left': '<path d="m15 5-7 7 7 7"/>',
+  'chevron-right': '<path d="m9 5 7 7-7 7"/>',
+  play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/>',
+  expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  collapse: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/>',
+  phone:
+    '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  message: '<path d="M4 5h16v11H9l-5 4z"/>',
+};
+---
+
+<svg
+  class={className}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.5"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+  set:html={paths[name]}
+/>

@@ -1,0 +1,68 @@
+---
+import { domainSlugs } from '@/data/domains';
+import { useTranslations, type Locale } from '@/i18n';
+import { site } from '@/config/site';
+import { countBy, getFeaturedProjects, getProjects } from '@/lib/projects';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Hero from '@/components/sections/Hero.astro';
+import Marquee from '@/components/sections/Marquee.astro';
+import Manifesto from '@/components/sections/Manifesto.astro';
+import Expertises from '@/components/sections/Expertises.astro';
+import FeaturedProjects from '@/components/sections/FeaturedProjects.astro';
+import Ecosystem from '@/components/sections/Ecosystem.astro';
+import About from '@/components/sections/About.astro';
+import Contact from '@/components/sections/Contact.astro';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+
+const [projects, featured] = await Promise.all([getProjects(), getFeaturedProjects(6)]);
+const counts = countBy(projects);
+
+const origin = new URL('/', Astro.site).href;
+const personId = `${origin}#person`;
+
+// Données structurées : la personne, ses deux entités, le site.
+const jsonLd = {
+  '@graph': [
+    {
+      '@type': 'Person',
+      '@id': personId,
+      name: site.name,
+      jobTitle: t.meta.jobTitle,
+      url: origin,
+      description: t.meta.description,
+      knowsAbout: domainSlugs.map((slug) => t.domains[slug].title),
+      ...(site.socials.length ? { sameAs: site.socials.map((s) => s.href) } : {}),
+    },
+    ...(['clicgraph', 'jeefsys'] as const).map((slug) => ({
+      '@type': 'Organization',
+      name: t.entities[slug].name,
+      description: t.entities[slug].description,
+      founder: { '@id': personId },
+    })),
+    {
+      '@type': 'WebSite',
+      name: site.name,
+      url: origin,
+      inLanguage: t.meta.lang,
+      author: { '@id': personId },
+    },
+  ],
+};
+---
+
+<BaseLayout page="home" locale={locale} path="/" jsonLd={jsonLd}>
+  <Hero locale={locale} />
+  <Marquee locale={locale} />
+  <Manifesto locale={locale} />
+  <Expertises locale={locale} counts={counts.domainCount} />
+  <FeaturedProjects locale={locale} projects={featured} />
+  <Ecosystem locale={locale} counts={counts.entityCount} />
+  <About locale={locale} />
+  <Contact locale={locale} />
+</BaseLayout>

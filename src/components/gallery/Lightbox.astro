@@ -1,0 +1,426 @@
+---
+import { useTranslations, type Locale } from '@/i18n';
+import Icon from '@/components/ui/Icon.astro';
+
+interface Props {
+  locale?: Locale;
+}
+
+const { locale = 'fr' } = Astro.props;
+const t = useTranslations(locale);
+
+// Le script (src/scripts/lightbox.ts) lit ces libellés : rien de codé en dur côté JS.
+const labels = JSON.stringify({
+  counter: t.lightbox.counter,
+  enter: t.lightbox.fullscreen,
+  exit: t.lightbox.exitFullscreen,
+  goTo: t.lightbox.goTo,
+});
+---
+
+<dialog data-lightbox data-labels={labels} aria-label={t.lightbox.label} class="lb">
+  <div class="lb-bar lb-chrome">
+    <p class="lb-counter eyebrow" data-lb-counter aria-live="polite"></p>
+
+    <p class="lb-hint" aria-hidden="true">
+      {t.lightbox.hint}
+    </p>
+
+    <div class="lb-actions">
+      <!-- zoom : images uniquement (masqué pour les vidéos) -->
+      <div class="lb-zoom" data-lb-zoom role="group" aria-label="Zoom">
+        <button
+          type="button"
+          class="lb-btn lb-btn-sm"
+          data-lb-zoom-out
+          aria-label={t.lightbox.zoomOut}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 12h12" />
+          </svg>
+        </button>
+        <button type="button" class="lb-level" data-lb-zoom-reset aria-label={t.lightbox.zoomReset}>
+          <span data-lb-zoom-level>100 %</span>
+        </button>
+        <button
+          type="button"
+          class="lb-btn lb-btn-sm"
+          data-lb-zoom-in
+          aria-label={t.lightbox.zoomIn}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 12h12M12 6v12" />
+          </svg>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="lb-btn"
+        data-lb-fullscreen
+        aria-label={t.lightbox.fullscreen}
+        aria-pressed="false"
+      >
+        <span data-icon-enter>
+          <Icon name="expand" class="size-5" />
+        </span>
+        <span data-icon-exit hidden>
+          <Icon name="collapse" class="size-5" />
+        </span>
+      </button>
+      <button type="button" class="lb-btn" data-lb-close aria-label={t.lightbox.close}>
+        <Icon name="close" class="size-5" />
+      </button>
+    </div>
+  </div>
+
+  <div class="lb-main">
+    <button
+      type="button"
+      class="lb-btn lb-nav lb-prev lb-chrome"
+      data-lb-prev
+      aria-label={t.lightbox.previous}
+    >
+      <Icon name="chevron-left" class="size-6" />
+    </button>
+    <div class="lb-stage" data-lb-stage></div>
+    <button
+      type="button"
+      class="lb-btn lb-nav lb-next lb-chrome"
+      data-lb-next
+      aria-label={t.lightbox.next}
+    >
+      <Icon name="chevron-right" class="size-6" />
+    </button>
+  </div>
+
+  <div class="lb-foot lb-chrome">
+    <p class="lb-caption" data-lb-caption hidden></p>
+    <div class="lb-thumbs" data-lb-thumbs aria-label={t.lightbox.thumbnails}></div>
+  </div>
+</dialog>
+
+<style is:global>
+  dialog.lb {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: var(--color-paper);
+    background: rgb(4 5 13 / 0.965);
+    backdrop-filter: blur(18px);
+    overflow: hidden;
+  }
+
+  dialog.lb[open] {
+    display: grid;
+    /* colonne bornée : sans cela, la bande de miniatures (plus large que l'écran) élargit
+             toute la grille et repousse les boutons hors de l'écran sur mobile */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    animation: lb-in 0.45s var(--ease-out-expo);
+  }
+
+  dialog.lb::backdrop {
+    background: rgb(4 5 13 / 0.85);
+  }
+
+  @keyframes lb-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* — barre du haut — */
+  .lb-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: max(1rem, env(safe-area-inset-top)) clamp(1rem, 3vw, 2rem) 0.5rem;
+  }
+
+  .lb-hint {
+    display: none;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-paper-faint);
+  }
+
+  @media (min-width: 1100px) and (hover: hover) {
+    .lb-hint {
+      display: block;
+    }
+  }
+
+  .lb-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .lb-zoom {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    border-radius: 999px;
+    border: 1px solid rgb(200 169 255 / 0.28);
+    background: rgb(11 18 51 / 0.55);
+  }
+
+  .lb-zoom[hidden] {
+    display: none;
+  }
+
+  .lb-level {
+    min-width: 3.6rem;
+    padding: 0.4rem 0.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--color-lavender-200);
+    background: none;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .lb-level:hover:not(:disabled) {
+    color: var(--color-paper);
+  }
+
+  .lb-btn {
+    display: grid;
+    place-items: center;
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: 999px;
+    border: 1px solid rgb(200 169 255 / 0.28);
+    background: rgb(11 18 51 / 0.55);
+    color: var(--color-paper);
+    transition:
+      background-color 0.3s,
+      border-color 0.3s,
+      opacity 0.3s,
+      transform 0.5s var(--ease-out-expo);
+  }
+
+  .lb-btn-sm {
+    width: 2.2rem;
+    height: 2.2rem;
+    border-color: transparent;
+    background: none;
+  }
+
+  .lb-btn:hover:not(:disabled) {
+    border-color: var(--color-mauve-300);
+    background: rgb(123 77 255 / 0.3);
+  }
+
+  .lb-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .lb-btn[hidden] {
+    display: none;
+  }
+
+  /* — scène — */
+  /* Pistes explicitement bornées (minmax(0, 1fr)) : sans cela, un média haut (9:16)
+     agrandit la piste « auto » à sa taille native et déborde de l'écran. */
+  .lb-main {
+    position: relative;
+    min-height: 0;
+    display: grid;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    padding: 0.25rem clamp(0.5rem, 3vw, 1.5rem) 0.5rem;
+  }
+
+  .lb-stage {
+    min-height: 0;
+    min-width: 0;
+    display: grid;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    place-items: center;
+    overflow: hidden;
+    touch-action: none; /* les gestes (pincer, glisser) sont gérés par lightbox.ts */
+    user-select: none;
+  }
+
+  /* Enveloppe qui porte le zoom / déplacement */
+  .lb-pan {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    will-change: transform;
+  }
+
+  /* Le média a une taille en pixels calculée par le script à partir de son ratio : jamais recadré. */
+  .lb-media {
+    display: block;
+    flex: none;
+    border-radius: 0.3rem;
+    box-shadow: 0 30px 120px -20px rgb(0 0 0 / 0.8);
+    background-color: #000;
+    -webkit-user-drag: none;
+  }
+
+  img.lb-media {
+    cursor: zoom-in;
+  }
+
+  .lb-pan.is-zoomed img.lb-media {
+    cursor: grab;
+  }
+
+  .lb-pan.is-dragging img.lb-media {
+    cursor: grabbing;
+  }
+
+  .lb-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    translate: 0 -50%;
+    background: rgb(4 5 13 / 0.6);
+    backdrop-filter: blur(8px);
+  }
+
+  .lb-prev {
+    left: clamp(0.5rem, 2vw, 1.5rem);
+  }
+
+  .lb-next {
+    right: clamp(0.5rem, 2vw, 1.5rem);
+  }
+
+  /* — pied : légende + miniatures — */
+  .lb-foot {
+    min-width: 0;
+    padding: 0 clamp(1rem, 3vw, 2rem) max(0.9rem, env(safe-area-inset-bottom));
+  }
+
+  .lb-caption {
+    padding: 0.4rem 0 0.7rem;
+    text-align: center;
+    font-size: 0.92rem;
+    color: var(--color-paper-muted);
+  }
+
+  .lb-thumbs {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 0.25rem 0.25rem 0.4rem;
+    scrollbar-width: none;
+  }
+
+  .lb-thumbs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .lb-thumbs[hidden] {
+    display: none;
+  }
+
+  /* justify-content: center coupe le début d'une liste qui déborde : on centre sans perdre le défilement */
+  .lb-thumbs > :first-child {
+    margin-left: auto;
+  }
+  .lb-thumbs > :last-child {
+    margin-right: auto;
+  }
+
+  .lb-thumb {
+    position: relative;
+    flex: none;
+    height: 3.4rem;
+    min-width: 2.4rem;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 0.35rem;
+    border: 1px solid rgb(200 169 255 / 0.2);
+    background: var(--color-navy-900);
+    opacity: 0.5;
+    transition:
+      opacity 0.3s,
+      border-color 0.3s,
+      transform 0.4s var(--ease-out-expo);
+  }
+
+  .lb-thumb img {
+    display: block;
+    height: 100%;
+    width: auto;
+    object-fit: cover;
+    -webkit-user-drag: none;
+  }
+
+  .lb-thumb.is-video::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    background: var(--color-paper);
+    clip-path: polygon(20% 8%, 20% 92%, 92% 50%);
+    filter: drop-shadow(0 1px 4px rgb(0 0 0 / 0.7));
+  }
+
+  .lb-thumb:not(:has(img)) {
+    width: 4.5rem;
+  }
+
+  .lb-thumb:hover,
+  .lb-thumb[aria-current='true'] {
+    opacity: 1;
+  }
+
+  .lb-thumb[aria-current='true'] {
+    border-color: var(--color-mauve-300);
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 640px) {
+    .lb-btn {
+      width: 2.6rem;
+      height: 2.6rem;
+    }
+    .lb-nav {
+      /* sur mobile : les flèches restent discrètes, le balayage fait le travail */
+      opacity: 0.85;
+    }
+    .lb-thumb {
+      height: 2.8rem;
+    }
+    .lb-level {
+      min-width: 3rem;
+    }
+  }
+</style>

@@ -1,0 +1,184 @@
+---
+import { useTranslations, type Locale } from '@/i18n';
+import { site, type SocialLink } from '@/config/site';
+import Icon, { type IconName } from '@/components/ui/Icon.astro';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+const { contact } = site;
+
+interface Channel {
+  label: string;
+  value: string;
+  href: string;
+  icon: IconName;
+  external?: boolean;
+}
+
+// Seules les coordonnées réellement renseignées dans src/config/site.ts sont affichées.
+const channels: Channel[] = [
+  contact.email && {
+    label: t.contact.email,
+    value: contact.email,
+    href: `mailto:${contact.email}`,
+    icon: 'mail' as const,
+  },
+  contact.phone && {
+    label: t.contact.phone,
+    value: contact.phone,
+    href: `tel:${contact.phone.replace(/[^\d+]/g, '')}`,
+    icon: 'phone' as const,
+  },
+  contact.whatsapp && {
+    label: t.contact.whatsapp,
+    value: 'WhatsApp',
+    href: contact.whatsapp,
+    icon: 'message' as const,
+    external: true,
+  },
+].filter(Boolean) as Channel[];
+
+const socials: SocialLink[] = site.socials;
+const hasForm = Boolean(contact.formEndpoint);
+const nothingConfigured = channels.length === 0 && socials.length === 0 && !hasForm;
+---
+
+<section
+  id="contact"
+  class="relative isolate overflow-hidden py-28 md:py-44"
+  aria-labelledby="contact-title"
+>
+  <div
+    class="bg-electric-600/15 pointer-events-none absolute bottom-[-20rem] left-1/2 -z-10 size-[56rem] -translate-x-1/2 rounded-full blur-[160px]"
+    aria-hidden="true"
+  ></div>
+
+  <div class="container-x">
+    <p class="eyebrow mb-8 flex items-center gap-4" data-reveal="fade">
+      <span class="text-paper-faint">05</span>
+      <span class="bg-mauve-400/50 h-px w-10"></span>
+      <span>{t.contact.eyebrow}</span>
+    </p>
+    <h2
+      id="contact-title"
+      class="font-display max-w-5xl text-[clamp(1.55rem,7.4vw,4.8rem)] leading-[1] font-extrabold tracking-[-0.035em] uppercase"
+      data-split="lines"
+    >
+      {t.contact.title}
+    </h2>
+    <p class="text-lavender-200 mt-8 text-xl md:text-2xl" data-reveal>
+      {t.contact.text}
+    </p>
+
+    <div class:list={['mt-16 grid gap-14 md:mt-20', hasForm && 'lg:grid-cols-2 lg:gap-24']}>
+      {(channels.length > 0 || socials.length > 0) && (
+        <div>
+          {channels.length > 0 && (
+            <ul class="border-t border-white/10">
+              {channels.map((c) => (
+                <li class="border-b border-white/10" data-reveal>
+                  <a
+                    href={c.href}
+                    class="group flex items-center justify-between gap-6 py-6"
+                    target={c.external ? '_blank' : undefined}
+                    rel={c.external ? 'noopener noreferrer' : undefined}
+                  >
+                    <span>
+                      <span class="eyebrow block !text-[0.66rem]">{c.label}</span>
+                      <span class="font-display group-hover:text-lavender-100 mt-2 block text-[clamp(1.3rem,2.6vw,2.2rem)] font-bold tracking-tight break-all transition-colors">
+                        {c.value}
+                      </span>
+                    </span>
+                    <span class="border-mauve-300/30 text-mauve-300 group-hover:bg-electric-500 group-hover:border-electric-500 group-hover:text-paper grid size-12 shrink-0 place-items-center rounded-full border transition-all duration-500">
+                      <Icon name="arrow-up-right" class="size-5" />
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {socials.length > 0 && (
+            <ul class="mt-10 flex flex-wrap gap-3" data-reveal>
+              {socials.map((s) => (
+                <li>
+                  <a
+                    href={s.href}
+                    class="btn btn-ghost !px-5 !py-2.5"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {s.label}
+                    <span class="sr-only">{t.a11y.externalLink}</span>
+                    <Icon name="arrow-up-right" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {hasForm && (
+        <form
+          data-contact-form
+          action={contact.formEndpoint}
+          method="POST"
+          class="space-y-6"
+          data-sending={t.contact.form.sending}
+          data-success={t.contact.form.success}
+          data-error={t.contact.form.error}
+          data-reveal
+        >
+          {contact.formAccessKey && (
+            <input type="hidden" name="access_key" value={contact.formAccessKey} />
+          )}
+          <input type="checkbox" name="botcheck" class="hidden" tabindex="-1" autocomplete="off" />
+          {(['name', 'email'] as const).map((field) => (
+            <label class="block">
+              <span class="eyebrow !text-[0.66rem]">{t.contact.form[field]}</span>
+              <input
+                type={field === 'email' ? 'email' : 'text'}
+                name={field}
+                required
+                autocomplete={field === 'email' ? 'email' : 'name'}
+                class="focus:border-mauve-300 mt-2 block w-full border-0 border-b border-white/20 bg-transparent py-3 text-lg outline-none transition-colors"
+              />
+            </label>
+          ))}
+          <label class="block">
+            <span class="eyebrow !text-[0.66rem]">{t.contact.form.message}</span>
+            <textarea
+              name="message"
+              required
+              rows="5"
+              class="focus:border-mauve-300 mt-2 block w-full resize-y border-0 border-b border-white/20 bg-transparent py-3 text-lg outline-none transition-colors"
+            ></textarea>
+          </label>
+          <div class="flex flex-wrap items-center gap-5">
+            <button type="submit" class="btn btn-primary disabled:opacity-60">
+              <span>{t.contact.form.send}</span>
+              <Icon name="arrow-right" />
+            </button>
+            <p
+              data-form-status
+              role="status"
+              aria-live="polite"
+              class="text-paper-muted text-sm data-[state=error]:text-red-300 data-[state=success]:text-lavender-100"
+            />
+          </div>
+        </form>
+      )}
+    </div>
+
+    {import.meta.env.DEV && nothingConfigured && (
+      <p class="border-mauve-400/50 text-paper-muted mt-10 max-w-xl border-l pl-5 text-sm">
+        {t.contact.devNotice}
+      </p>
+    )}
+  </div>
+</section>
