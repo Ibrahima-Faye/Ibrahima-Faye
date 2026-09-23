@@ -12,7 +12,7 @@ const { locale, current } = Astro.props;
 const t = useTranslations(locale);
 const home = localizedPath('/', locale);
 
-/** `id` = identifiant de la section sur la page d'accueil (surlignage au scroll). */
+/** `id` = identifiant de la section sur la page d'accueil (défilement + section active : scripts/navigation.ts). */
 const links = [
   { id: 'expertises', label: t.nav.expertises, href: `${home}#expertises` },
   { id: 'projets', label: t.nav.projects, href: `${home}#projets` },
@@ -21,14 +21,28 @@ const links = [
 ];
 const contact = { id: 'contact', label: t.nav.contact, href: `${home}#contact` };
 const isProjectsPage = current === 'projects' || current === 'project';
+/** « Projets » est actif sur la liste des projets et sur chaque page projet. */
+const activeAttrs = (id: string) => ({
+  'data-active': isProjectsPage && id === 'projets' ? 'true' : 'false',
+  'aria-current': current === 'projects' && id === 'projets' ? ('page' as const) : undefined,
+});
 ---
 
 <header
   data-header
   data-scrolled="false"
-  class="data-[scrolled=true]:bg-ink-950/75 fixed inset-x-0 top-0 z-50 border-b border-transparent transition-[background-color,border-color] duration-500 data-[scrolled=true]:border-white/[0.06] data-[scrolled=true]:backdrop-blur-xl"
+  class="group/header fixed inset-x-0 top-0 z-50 border-b border-transparent"
 >
-  <div class="container-x flex h-[4.5rem] items-center justify-between gap-6">
+  <!--
+    Fond flouté + filet sur un calque à part : un `backdrop-filter` posé sur <header> lui-même ferait du header
+    le repère des éléments `fixed` qu'il contient, et le menu mobile plein écran serait réduit à 0 px de haut.
+    (La bordure transparente du header garde sa hauteur ; le calque la recouvre exactement.)
+  -->
+  <div
+    class="group-data-[scrolled=true]/header:bg-ink-950/75 pointer-events-none absolute inset-x-0 top-0 -bottom-px -z-10 border-b border-transparent transition-[background-color,border-color] duration-500 group-data-[scrolled=true]/header:border-white/[0.06] group-data-[scrolled=true]/header:backdrop-blur-xl"
+    aria-hidden="true"
+  ></div>
+  <div class="container-x flex h-(--header-height) items-center justify-between gap-6">
     <a href={home} class="group flex items-center gap-3" aria-label={t.a11y.home}>
       <span
         class="border-mauve-300/40 bg-navy-900/60 font-display text-lavender-100 group-hover:border-mauve-300 grid size-9 place-items-center rounded-full border text-[0.7rem] font-bold tracking-wider transition-colors duration-500"
@@ -46,7 +60,7 @@ const isProjectsPage = current === 'projects' || current === 'project';
         <a
           href={l.href}
           data-nav-link={l.id}
-          data-active={isProjectsPage && l.id === 'projets' ? 'true' : 'false'}
+          {...activeAttrs(l.id)}
           class="link-line text-paper-muted hover:text-paper data-[active=true]:text-paper py-1 text-[0.82rem] font-medium tracking-wide transition-colors"
         >
           {l.label}
@@ -83,7 +97,7 @@ const isProjectsPage = current === 'projects' || current === 'project';
     id="mobile-menu"
     data-menu-panel
     hidden
-    class="bg-ink-950/95 fixed inset-0 top-[4.5rem] z-40 overflow-y-auto backdrop-blur-2xl md:hidden"
+    class="bg-ink-950/95 fixed inset-0 top-(--header-height) z-40 overflow-y-auto backdrop-blur-2xl md:hidden"
   >
     <nav
       class="container-x flex min-h-full flex-col justify-center gap-2 py-10"
@@ -93,7 +107,9 @@ const isProjectsPage = current === 'projects' || current === 'project';
         <a
           href={l.href}
           data-menu-link
-          class="font-display border-b border-white/[0.07] py-4 text-4xl font-bold tracking-tight uppercase"
+          data-nav-link={l.id}
+          {...activeAttrs(l.id)}
+          class="font-display data-[active=true]:text-mauve-300 border-b border-white/[0.07] py-4 text-4xl font-bold tracking-tight uppercase transition-colors"
         >
           <span class="eyebrow mr-4 align-middle">{String(i + 1).padStart(2, '0')}</span>
           {l.label}

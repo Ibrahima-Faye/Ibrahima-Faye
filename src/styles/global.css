@@ -57,7 +57,15 @@
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    scroll-padding-top: 5.5rem;
+    /* Hauteur de l'en-tête fixe : une section atteinte par la navigation se place juste en dessous
+       (lu aussi par scripts/navigation.ts). */
+    --header-height: 4.5rem;
+    scroll-padding-top: var(--header-height);
+  }
+
+  /* Section atteinte par la navigation : elle reçoit le focus (lecteurs d'écran) sans cadre visible. */
+  main section[id]:focus {
+    outline: none;
   }
 
   @media (prefers-reduced-motion: no-preference) {

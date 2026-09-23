@@ -7,6 +7,7 @@
  */
 import { initMotion } from './motion';
 import { initHeader } from './header';
+import { initNavigation } from './navigation';
 import { initFilters } from './filters';
 import { initLightbox, initGalleryVideos } from './lightbox';
 import { initContactForm } from './contact-form';
@@ -42,6 +43,8 @@ function init() {
   if (canvas) cleanups.push(mountHeroField(canvas));
 
   cleanups.push(initMotion());
+  // après les animations : les titres sont découpés, les positions sont celles de la page finale
+  cleanups.push(initNavigation());
 }
 
 document.addEventListener('astro:page-load', init);

@@ -1,4 +1,7 @@
-/** En-tête : état « scrollé », menu mobile, surlignage de la section visible. */
+/**
+ * En-tête : état « scrollé », menu mobile, retour en haut.
+ * (Défilement vers les sections et section active : voir navigation.ts.)
+ */
 export function initHeader(): () => void {
   const header = document.querySelector<HTMLElement>('[data-header]');
   if (!header) return () => {};
@@ -26,47 +29,49 @@ export function initHeader(): () => void {
       if (open) panel.querySelector<HTMLElement>('a')?.focus({ preventScroll: true });
       else if (returnFocus) toggle.focus();
     };
-    const onToggle = () => setOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+    const onToggle = () => setOpen(!isOpen());
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true')
-        setOpen(false, true);
+      if (!isOpen()) return;
+      if (e.key === 'Escape') setOpen(false, true);
+      // le focus reste dans le menu ouvert (bouton + liens), le reste de la page est masqué
+      if (e.key === 'Tab') {
+        const focusables = [toggle, ...panel.querySelectorAll<HTMLElement>('a[href]')];
+        const i = focusables.indexOf(document.activeElement as HTMLElement);
+        const next = e.shiftKey
+          ? i <= 0
+            ? focusables.at(-1)
+            : undefined
+          : i === focusables.length - 1 || i === -1
+            ? focusables[0]
+            : undefined;
+        if (next) {
+          e.preventDefault();
+          next.focus();
+        }
+      }
     };
     const onLink = (e: Event) => {
       if ((e.target as HTMLElement).closest('[data-menu-link]')) setOpen(false);
     };
+    // navigation.ts ferme le menu AVANT de faire défiler (défilement débloqué, mise en page à jour)
+    const onCloseRequest = () => isOpen() && setOpen(false);
     const onResize = () => {
       if (window.innerWidth >= 768) setOpen(false);
     };
     toggle.addEventListener('click', onToggle);
     panel.addEventListener('click', onLink);
     document.addEventListener('keydown', onKey);
+    document.addEventListener('nav:close-menu', onCloseRequest);
     window.addEventListener('resize', onResize);
     cleanups.push(() => {
       toggle.removeEventListener('click', onToggle);
       panel.removeEventListener('click', onLink);
       document.removeEventListener('keydown', onKey);
+      document.removeEventListener('nav:close-menu', onCloseRequest);
       window.removeEventListener('resize', onResize);
       setOpen(false);
     });
-  }
-
-  // — section visible (page d'accueil) —
-  const sections = Array.from(document.querySelectorAll<HTMLElement>('main section[id]'));
-  const links = Array.from(header.querySelectorAll<HTMLElement>('[data-nav-link]'));
-  if (sections.length && links.length) {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          links.forEach((l) =>
-            l.setAttribute('data-active', String(l.dataset.navLink === entry.target.id)),
-          );
-        }
-      },
-      { rootMargin: '-45% 0px -50% 0px' },
-    );
-    sections.forEach((s) => observer.observe(s));
-    cleanups.push(() => observer.disconnect());
   }
 
   // — retour en haut —
@@ -75,7 +80,7 @@ export function initHeader(): () => void {
     e.preventDefault();
     window.scrollTo({
       top: 0,
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
     });
   };
   top?.addEventListener('click', onTop);
