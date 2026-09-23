@@ -89,6 +89,10 @@ La **vraie page publique** du projet, affichée dans un cadre « ordinateur », 
 vraies règles responsives). Les modifications sont enregistrées juste avant l'affichage. « Actualiser » recharge,
 « Ouvrir dans un onglet » l'ouvre en grand.
 
+## Studio (thème, animations, sections, navigation)
+
+Menu **Studio** : personnaliser tout le site sans toucher au code, avec aperçu en direct. Voir [STUDIO.md](STUDIO.md).
+
 ## Enregistrement
 
 **Automatique** : chaque modification est enregistrée environ une seconde plus tard (indicateur en haut à droite :

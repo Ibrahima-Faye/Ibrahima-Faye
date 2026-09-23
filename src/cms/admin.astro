@@ -10,6 +10,13 @@ import { domainNumber, domainSlugs } from '@/data/domains';
 import { entitySlugs, projectStatuses } from '@/data/entities';
 import { useTranslations } from '@/i18n';
 import { SPAN_INFO } from '@/lib/gallery-layout';
+import fr from '@/i18n/ui/fr';
+import { SECTIONS } from '@/lib/studio/layout';
+
+/** Texte d'origine (dictionnaire non modifié) d'un chemin « a.b ». */
+const original = (path: string) =>
+  path.split('.').reduce<unknown>((node, key) => (node as Record<string, unknown>)?.[key], fr) as
+    string | string[];
 
 const t = useTranslations('fr');
 
@@ -27,6 +34,12 @@ const meta = {
   })),
   statuses: projectStatuses.map((slug) => ({ slug, label: t.statuses[slug] })),
   spans: SPAN_INFO,
+  studio: {
+    texts: Object.fromEntries(
+      SECTIONS.flatMap((s) => s.fields).map((field) => [field.path, original(field.path)]),
+    ),
+    nav: { ...fr.nav },
+  },
 };
 ---
 

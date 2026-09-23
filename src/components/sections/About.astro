@@ -4,12 +4,15 @@ import type { ImageMetadata } from 'astro';
 import { useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
 import SectionHeading from '@/components/ui/SectionHeading.astro';
+import type { SectionProps } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
+  /** Réglages de la section (Studio → Sections) : ancre, fond, hauteur, effets. */
+  section?: SectionProps;
 }
 
-const { locale } = Astro.props;
+const { locale, section } = Astro.props;
 const t = useTranslations(locale);
 
 // Photo : déposer src/assets/portrait.jpg (ou .png / .webp / .avif) — détectée automatiquement.
@@ -21,16 +24,28 @@ const portrait = Object.values(portraits)[0];
 const ratio = portrait ? portrait.width / portrait.height : 4 / 5;
 ---
 
-<section id="a-propos" class="relative py-28 md:py-40" aria-labelledby="a-propos-title">
+<section
+  id={section?.id ?? 'a-propos'}
+  data-section="about"
+  data-anim="about.section"
+  style={section?.style}
+  {...section?.attrs}
+  class="section-pad relative"
+  aria-labelledby="a-propos-title"
+>
   <div class="container-x">
     <div
       class="grid items-start gap-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-24"
       data-parallax-scope
     >
       <!-- Portrait — ratio d'origine conservé -->
-      <div class="relative mx-auto w-full max-w-md lg:mx-0 lg:sticky lg:top-28" data-reveal="mask">
+      <div
+        class="relative mx-auto w-full max-w-md lg:sticky lg:top-28 lg:mx-0"
+        data-reveal="mask"
+        data-anim="about.portrait"
+      >
         <div
-          class="border-mauve-300/20 bg-navy-950 relative overflow-hidden rounded-[0.5rem] border"
+          class="border-mauve-300/20 bg-navy-950 relative overflow-hidden rounded-[var(--radius-media,0.5rem)] border"
           style={`aspect-ratio:${ratio.toFixed(4)}`}
         >
           {portrait ? (
@@ -76,12 +91,13 @@ const ratio = portrait ? portrait.width / portrait.height : 4 / 5;
       <div>
         <SectionHeading
           headingId="a-propos-title"
+          anim="about"
           index="04"
           eyebrow={t.about.eyebrow}
           title={t.about.title}
         />
 
-        <div class="mt-10 space-y-6">
+        <div class="mt-10 space-y-6" data-anim="about.text">
           {t.about.paragraphs.map((paragraph, i) => (
             <p
               class:list={[

@@ -2,12 +2,15 @@
 import { localizedPath, useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
 import Button from '@/components/ui/Button.astro';
+import type { SectionProps } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
+  /** Réglages de la section (Studio → Sections) : ancre, fond, hauteur, effets. */
+  section?: SectionProps;
 }
 
-const { locale } = Astro.props;
+const { locale, section } = Astro.props;
 const t = useTranslations(locale);
 const [firstName = '', ...rest] = site.name.split(' ');
 const lastName = rest.join(' ');
@@ -17,25 +20,38 @@ const home = localizedPath('/', locale);
 
 <section
   data-hero
+  data-section="hero"
+  data-anim="hero.section"
+  id={section?.id}
+  style={section?.style}
+  {...section?.attrs}
   class="relative isolate min-h-[100svh] overflow-hidden"
   aria-labelledby="hero-title"
 >
   <!-- Fond : profondeur navy → noir bleuté, halo violet -->
   <div
+    data-section-deco
     class="absolute inset-0 -z-30 bg-[radial-gradient(120%_90%_at_78%_8%,var(--color-navy-800)_0%,var(--color-navy-900)_32%,var(--color-ink-950)_72%)]"
     aria-hidden="true"
   ></div>
   <div
-    class="bg-electric-500/25 pointer-events-none absolute -top-56 -right-48 -z-20 size-[52rem] rounded-full blur-[140px]"
+    data-section-deco
+    class="fx-glow bg-electric-500/25 pointer-events-none absolute -top-56 -right-48 -z-20 size-[52rem] rounded-full blur-[140px]"
     aria-hidden="true"
   ></div>
   <div
-    class="bg-mauve-400/10 pointer-events-none absolute bottom-[-18rem] -left-40 -z-20 size-[40rem] rounded-full blur-[130px]"
+    data-section-deco
+    class="fx-glow bg-mauve-400/10 pointer-events-none absolute bottom-[-18rem] -left-40 -z-20 size-[40rem] rounded-full blur-[130px]"
     aria-hidden="true"
   ></div>
 
   <!-- Champ filaire 3D (Canvas 2D, voir src/scripts/hero-field.ts) -->
-  <div class="absolute inset-0 -z-10" aria-hidden="true">
+  <div
+    class="absolute inset-0 -z-10"
+    aria-hidden="true"
+    data-section-deco
+    data-anim="hero.background"
+  >
     <canvas data-hero-canvas class="size-full"></canvas>
   </div>
   <!-- Voiles : lisibilité du texte + fondu vers la section suivante -->
@@ -52,7 +68,7 @@ const home = localizedPath('/', locale);
     data-hero-content
     class="container-x relative flex min-h-[100svh] flex-col justify-center pt-28 pb-36"
   >
-    <p class="eyebrow mb-8 flex items-center gap-4" data-intro="fade">
+    <p class="eyebrow mb-8 flex items-center gap-4" data-intro="fade" data-anim="hero.eyebrow">
       <span class="bg-mauve-400/60 h-px w-12"></span>
       {t.hero.eyebrow}
     </p>
@@ -61,13 +77,17 @@ const home = localizedPath('/', locale);
       id="hero-title"
       data-hero-name
       data-intro
+      data-anim="hero.title"
       class="display-xl text-[clamp(2.2rem,7.6vw,8.6rem)]"
     >
       <span class="block sm:inline">{firstName}</span>{' '}
       <span class="block sm:inline">{lastName}</span>
     </h1>
 
-    <p class="font-display mt-8 text-[clamp(1.65rem,4.3vw,4.1rem)] leading-[1.02] font-extrabold tracking-[-0.03em] uppercase md:mt-10">
+    <p
+      class="font-display mt-8 text-[clamp(1.65rem,4.3vw,4.1rem)] leading-[1.02] font-extrabold tracking-[-0.03em] uppercase md:mt-10"
+      data-anim="hero.lines"
+    >
       {t.hero.lines.map((line, i) => (
         <span class="block overflow-hidden pb-[0.14em]">
           <span
@@ -84,6 +104,7 @@ const home = localizedPath('/', locale);
     <p
       class="text-paper-muted mt-9 flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.7rem] tracking-[0.16em] uppercase sm:text-xs"
       data-intro="fade"
+      data-anim="hero.subtitle"
     >
       {parts.map((part, i) => (
         <>
@@ -97,7 +118,7 @@ const home = localizedPath('/', locale);
       ))}
     </p>
 
-    <div class="mt-11 flex flex-wrap items-center gap-4" data-intro="fade">
+    <div class="mt-11 flex flex-wrap items-center gap-4" data-intro="fade" data-anim="hero.actions">
       <Button href={`${home}#projets`}>{t.hero.ctaProjects}</Button>
       <Button href={`${home}#contact`} variant="ghost" icon="arrow-up-right">
         {t.hero.ctaContact}

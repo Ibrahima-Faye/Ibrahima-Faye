@@ -36,7 +36,8 @@ const brands = data.entity.map((e) => t.entities[e].name).join(' · ');
 >
   <a href={href} class="block">
     <div
-      class="frame bg-navy-950 relative overflow-hidden rounded-[0.4rem] ring-1 ring-white/[0.07] transition-shadow duration-700 group-hover:ring-mauve-300/40"
+      data-anim="projects.images"
+      class="frame bg-navy-950 relative overflow-hidden rounded-[var(--radius-media,0.4rem)] ring-1 ring-white/[0.07] transition-shadow duration-700 group-hover:ring-mauve-300/40"
       style={`aspect-ratio:${ratio.toFixed(4)}`}
     >
       {cover ? (

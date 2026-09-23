@@ -49,8 +49,18 @@ function sectionIds(): Set<string> {
   );
 }
 
+/** Réglages de l'administration posés sur l'en-tête (src/settings/navigation.json). */
+const header = () => document.querySelector<HTMLElement>('[data-header]');
+const readingLine = () => {
+  const value = parseFloat(header()?.dataset.readingLine ?? '');
+  return value > 0 && value < 1 ? value : READING_LINE;
+};
+const smoothAllowed = () =>
+  !prefersReducedMotion() && header()?.dataset.scrollBehavior !== 'instant';
+
 /** Marque le lien actif (en-tête + menu mobile). `null` = aucun. */
 function setActive(id: string | null) {
+  if (header()?.dataset.navActive === 'off') id = null;
   for (const link of document.querySelectorAll<HTMLElement>(LINK)) {
     const on = link.dataset.navLink === id;
     link.setAttribute('data-active', String(on));
@@ -118,7 +128,7 @@ async function scrollToSection(id: string, state: NavState) {
   setActive(id);
   const user = watchUser();
   try {
-    const smooth = !prefersReducedMotion();
+    const smooth = smoothAllowed();
     for (let attempt = 0; attempt < 3; attempt++) {
       const top = targetTop(el);
       if (Math.abs(window.scrollY - top) <= TOLERANCE) break;
@@ -201,7 +211,7 @@ export function initNavigation(): () => void {
     lockedOn: null,
     update: () => {
       if (!sections.length || state.lockedOn) return;
-      const line = offset() + (window.innerHeight - offset()) * READING_LINE;
+      const line = offset() + (window.innerHeight - offset()) * readingLine();
       let active: string | null = null;
       for (const section of sections) {
         const box = section.getBoundingClientRect();

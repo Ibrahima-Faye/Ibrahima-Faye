@@ -2,6 +2,8 @@
 import { format, localizedPath, useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
 import Icon from '@/components/ui/Icon.astro';
+import { settings } from '@/lib/settings';
+import { sectionStyle } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
@@ -20,10 +22,19 @@ const nav = [
   { label: t.nav.contact, href: `${home}#contact` },
 ];
 const universe = (['clicgraph', 'jeefsys'] as const).map((slug) => ({ slug, ...t.entities[slug] }));
+// Studio → Sections → Pied de page : fond, effets, grand mot-symbole
+const own = settings.layout.sections?.footer ?? {};
+const look = sectionStyle(own);
 ---
 
-<footer class="relative isolate overflow-hidden border-t border-white/[0.06] pt-24 pb-10">
+<footer
+  class="relative isolate overflow-hidden border-t border-white/[0.06] pt-24 pb-10"
+  data-section="footer"
+  style={look.style || undefined}
+  {...look.attrs}
+>
   <div
+    data-section-deco
     class="from-navy-900/60 pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-gradient-to-t to-transparent"
     aria-hidden="true"
   ></div>
@@ -70,12 +81,15 @@ const universe = (['clicgraph', 'jeefsys'] as const).map((slug) => ({ slug, ...t
     </div>
 
     <!-- Grand mot-symbole -->
-    <p
-      class="font-display text-outline mt-20 text-center text-[min(10.4vw,9.6rem)] leading-none font-extrabold tracking-tighter uppercase select-none"
-      aria-hidden="true"
-    >
-      {site.name.split(' ')[0]}
-    </p>
+    {own.wordmark !== false && (
+      <p
+        data-anim="footer.wordmark"
+        class="font-display text-outline mt-20 text-center text-[min(10.4vw,9.6rem)] leading-none font-extrabold tracking-tighter uppercase select-none"
+        aria-hidden="true"
+      >
+        {site.name.split(' ')[0]}
+      </p>
+    )}
 
     <div class="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.06] pt-6">
       <p class="text-paper-faint text-sm">{format(t.footer.rights, { year })}</p>

@@ -12,6 +12,8 @@ import FeaturedProjects from '@/components/sections/FeaturedProjects.astro';
 import Ecosystem from '@/components/sections/Ecosystem.astro';
 import About from '@/components/sections/About.astro';
 import Contact from '@/components/sections/Contact.astro';
+import { settings } from '@/lib/settings';
+import { sectionOrder, sectionProps, type SectionKey } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
@@ -22,6 +24,25 @@ const t = useTranslations(locale);
 
 const [projects, featured] = await Promise.all([getProjects(), getFeaturedProjects(6)]);
 const counts = countBy(projects);
+
+// Sections : ordre et visibilité réglables (src/settings/layout.json) ; sans réglage, l'ordre d'origine.
+const layout = settings.layout;
+const order = sectionOrder(layout).filter((key) => layout.sections?.[key]?.visible !== false);
+const COMPONENTS = {
+  hero: Hero,
+  marquee: Marquee,
+  manifesto: Manifesto,
+  expertises: Expertises,
+  projects: FeaturedProjects,
+  ecosystem: Ecosystem,
+  about: About,
+  contact: Contact,
+} satisfies Record<SectionKey, unknown>;
+const extra: Partial<Record<SectionKey, Record<string, unknown>>> = {
+  expertises: { counts: counts.domainCount },
+  projects: { projects: featured },
+  ecosystem: { counts: counts.entityCount },
+};
 
 const origin = new URL('/', Astro.site).href;
 const personId = `${origin}#person`;
@@ -57,12 +78,8 @@ const jsonLd = {
 ---
 
 <BaseLayout page="home" locale={locale} path="/" jsonLd={jsonLd}>
-  <Hero locale={locale} />
-  <Marquee locale={locale} />
-  <Manifesto locale={locale} />
-  <Expertises locale={locale} counts={counts.domainCount} />
-  <FeaturedProjects locale={locale} projects={featured} />
-  <Ecosystem locale={locale} counts={counts.entityCount} />
-  <About locale={locale} />
-  <Contact locale={locale} />
+  {order.map((key) => {
+    const Section = COMPONENTS[key] as any;
+    return <Section locale={locale} section={sectionProps(layout, key)} {...extra[key]} />;
+  })}
 </BaseLayout>

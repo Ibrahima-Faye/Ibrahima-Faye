@@ -14,12 +14,16 @@
  *   GET    /thumb/:slug/:file?w=480             miniature (depuis la version web si besoin : HEIC, vidéo)
  *   GET    /web/:slug/:file/:output             version web (vidéo MP4, affiche…)
  *   GET    /file/:slug/:file                    fichier d'origine (Range accepté)
+ *   GET    /api/settings                        réglages du site (Studio) : thème, sections, navigation, animations
+ *   GET    /api/settings/:name                  un réglage
+ *   PUT    /api/settings/:name                  enregistrement { data, baseUpdatedAt?, force? }
+ *   POST   /api/identity?name=logo.svg          image d'identité → public/identite/ (corps = fichier brut)
  */
 import { HttpError, guard, readJson, sendJson, serveFile } from './http.mjs';
 
 const seg = (s) => decodeURIComponent(s);
 
-export function createApi(store) {
+export function createApi(store, settings) {
   return async function handle(req, res) {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost');
@@ -47,6 +51,18 @@ export function createApi(store) {
         const media = store.mediaPath(slug, file);
         return serveFile(req, res, media.path, media.mime);
       }
+
+      // ---------- réglages du site (Studio) ----------
+      if (parts[0] === 'api' && parts[1] === 'settings') {
+        if (parts.length === 2 && method === 'GET') return sendJson(res, 200, await settings.all());
+        if (parts.length === 3 && method === 'GET')
+          return sendJson(res, 200, await settings.read(parts[2]));
+        if (parts.length === 3 && method === 'PUT')
+          return sendJson(res, 200, await settings.save(parts[2], await readJson(req)));
+        throw new HttpError(405, 'Méthode non autorisée.');
+      }
+      if (parts[0] === 'api' && parts[1] === 'identity' && parts.length === 2 && method === 'POST')
+        return sendJson(res, 201, await settings.saveIdentity(req, url.searchParams.get('name')));
 
       // ---------- API JSON ----------
       if (parts[0] !== 'api' || parts[1] !== 'projects')

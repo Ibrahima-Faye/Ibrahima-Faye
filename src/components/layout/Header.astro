@@ -1,6 +1,8 @@
 ---
 import { localizedPath, useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
+import { settings } from '@/lib/settings';
+import { navLinks, sectionAnchor, type SectionKey } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
@@ -12,25 +14,49 @@ const { locale, current } = Astro.props;
 const t = useTranslations(locale);
 const home = localizedPath('/', locale);
 
-/** `id` = identifiant de la section sur la page d'accueil (défilement + section active : scripts/navigation.ts). */
-const links = [
-  { id: 'expertises', label: t.nav.expertises, href: `${home}#expertises` },
-  { id: 'projets', label: t.nav.projects, href: `${home}#projets` },
-  { id: 'ecosysteme', label: t.nav.ecosystem, href: `${home}#ecosysteme` },
-  { id: 'a-propos', label: t.nav.about, href: `${home}#a-propos` },
-];
-const contact = { id: 'contact', label: t.nav.contact, href: `${home}#contact` };
+/*
+  Liens : réglables dans l'administration (Studio → Navigation, src/settings/navigation.json).
+  `id` = ancre de la section visée sur la page d'accueil (défilement + section active : scripts/navigation.ts).
+  Un lien vers une section masquée n'est pas affiché.
+*/
+const { layout, navigation, theme } = settings;
+const nav = navLinks(navigation)
+  .filter((l) => l.visible !== false)
+  .map((l) => {
+    const page = l.target.startsWith('page:') ? l.target.slice(5) : '';
+    const key = l.target as SectionKey;
+    const hidden = !page && layout.sections?.[key]?.visible === false;
+    const anchor = page ? '' : sectionAnchor(layout, key);
+    const label =
+      l.label?.trim() || (l.labelKey ? t.nav[l.labelKey as keyof typeof t.nav] : '') || l.id;
+    return {
+      id: anchor || l.id,
+      key: l.target,
+      label,
+      href: page ? localizedPath(page, locale) : `${home}#${anchor}`,
+      button: l.button === true,
+      hidden: hidden || (!page && !anchor),
+    };
+  })
+  .filter((l) => !l.hidden);
+const links = nav.filter((l) => !l.button);
+const buttons = nav.filter((l) => l.button);
 const isProjectsPage = current === 'projects' || current === 'project';
 /** « Projets » est actif sur la liste des projets et sur chaque page projet. */
-const activeAttrs = (id: string) => ({
-  'data-active': isProjectsPage && id === 'projets' ? 'true' : 'false',
-  'aria-current': current === 'projects' && id === 'projets' ? ('page' as const) : undefined,
+const activeAttrs = (key: string) => ({
+  'data-active': isProjectsPage && key === 'projects' ? 'true' : 'false',
+  'aria-current': current === 'projects' && key === 'projects' ? ('page' as const) : undefined,
 });
+const logo = theme.identity?.logo;
+const numbered = navigation.mobile?.numbered !== false;
 ---
 
 <header
   data-header
   data-scrolled="false"
+  data-scroll-behavior={navigation.scroll?.behavior}
+  data-reading-line={navigation.scroll?.readingLine}
+  data-nav-active={navigation.active?.enabled === false ? 'off' : undefined}
   class="group/header fixed inset-x-0 top-0 z-50 border-b border-transparent"
 >
   <!--
@@ -39,40 +65,47 @@ const activeAttrs = (id: string) => ({
     (La bordure transparente du header garde sa hauteur ; le calque la recouvre exactement.)
   -->
   <div
+    data-header-bg
     class="group-data-[scrolled=true]/header:bg-ink-950/75 pointer-events-none absolute inset-x-0 top-0 -bottom-px -z-10 border-b border-transparent transition-[background-color,border-color] duration-500 group-data-[scrolled=true]/header:border-white/[0.06] group-data-[scrolled=true]/header:backdrop-blur-xl"
     aria-hidden="true"
   ></div>
   <div class="container-x flex h-(--header-height) items-center justify-between gap-6">
     <a href={home} class="group flex items-center gap-3" aria-label={t.a11y.home}>
-      <span
-        class="border-mauve-300/40 bg-navy-900/60 font-display text-lavender-100 group-hover:border-mauve-300 grid size-9 place-items-center rounded-full border text-[0.7rem] font-bold tracking-wider transition-colors duration-500"
-        aria-hidden="true"
-      >
-        {site.initials}
-      </span>
+      {logo ? (
+        <img src={logo} alt="" class="h-9 w-auto max-w-[9rem] object-contain" aria-hidden="true" />
+      ) : (
+        <span
+          class="border-mauve-300/40 bg-navy-900/60 font-display text-lavender-100 group-hover:border-mauve-300 grid size-9 place-items-center rounded-full border text-[0.7rem] font-bold tracking-wider transition-colors duration-500"
+          aria-hidden="true"
+        >
+          {site.initials}
+        </span>
+      )}
       <span class="font-display hidden text-[0.8rem] font-bold tracking-[0.22em] uppercase sm:block">
         {site.name}
       </span>
     </a>
 
-    <nav class="hidden items-center gap-9 md:flex" aria-label={t.a11y.mainNav}>
+    <nav
+      class="hidden items-center md:flex"
+      style="gap: var(--nav-gap, 2.25rem)"
+      aria-label={t.a11y.mainNav}
+    >
       {links.map((l) => (
         <a
           href={l.href}
           data-nav-link={l.id}
-          {...activeAttrs(l.id)}
+          {...activeAttrs(l.key)}
           class="link-line text-paper-muted hover:text-paper data-[active=true]:text-paper py-1 text-[0.82rem] font-medium tracking-wide transition-colors"
         >
           {l.label}
         </a>
       ))}
-      <a
-        href={contact.href}
-        class="btn btn-ghost !px-5 !py-2.5 !text-[0.8rem]"
-        data-nav-link={contact.id}
-      >
-        {contact.label}
-      </a>
+      {buttons.map((l) => (
+        <a href={l.href} class="btn btn-ghost !px-5 !py-2.5 !text-[0.8rem]" data-nav-link={l.id}>
+          {l.label}
+        </a>
+      ))}
     </nav>
 
     <button
@@ -103,15 +136,17 @@ const activeAttrs = (id: string) => ({
       class="container-x flex min-h-full flex-col justify-center gap-2 py-10"
       aria-label={t.a11y.mainNav}
     >
-      {[...links, contact].map((l, i) => (
+      {[...links, ...buttons].map((l, i) => (
         <a
           href={l.href}
           data-menu-link
           data-nav-link={l.id}
-          {...activeAttrs(l.id)}
+          {...activeAttrs(l.key)}
           class="font-display data-[active=true]:text-mauve-300 border-b border-white/[0.07] py-4 text-4xl font-bold tracking-tight uppercase transition-colors"
         >
-          <span class="eyebrow mr-4 align-middle">{String(i + 1).padStart(2, '0')}</span>
+          {numbered && (
+            <span class="eyebrow mr-4 align-middle">{String(i + 1).padStart(2, '0')}</span>
+          )}
           {l.label}
         </a>
       ))}

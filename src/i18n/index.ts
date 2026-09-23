@@ -1,5 +1,7 @@
 import fr, { type Dictionary } from './ui/fr';
 import en from './ui/en';
+import { settings } from '@/lib/settings';
+import { applyContent } from '@/lib/studio/layout';
 
 export type { Dictionary };
 export type DeepPartial<T> = T extends readonly unknown[]
@@ -38,11 +40,21 @@ function merge<T>(base: T, override: unknown): T {
 
 const cache = new Map<Locale, Dictionary>();
 
+/** Textes modifiés depuis l'administration (src/settings/layout.json + slogan du thème), appliqués au français. */
+function customized(base: Dictionary): Dictionary {
+  const tagline = settings.theme.identity?.tagline?.trim();
+  return applyContent(base, {
+    ...(tagline ? { 'meta.jobTitle': tagline } : {}),
+    ...settings.layout.content,
+  });
+}
+
 /** Dictionnaire complet et typé pour une langue. */
 export function useTranslations(locale: Locale = defaultLocale): Dictionary {
   let dict = cache.get(locale);
   if (!dict) {
-    dict = locale === defaultLocale ? fr : merge(fr, dictionaries[locale]);
+    const base = customized(fr);
+    dict = locale === defaultLocale ? base : merge(base, dictionaries[locale]);
     cache.set(locale, dict);
   }
   return dict;

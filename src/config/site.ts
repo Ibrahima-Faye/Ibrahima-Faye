@@ -6,7 +6,13 @@
  * qu'elles n'ont pas été renseignées. Une coordonnée vide n'est simplement pas affichée.
  *
  * Photo portrait : déposer `src/assets/portrait.jpg` (ou .png / .webp / .avif) — détectée automatiquement.
+ *
+ * Nom affiché et symbole : modifiables dans l'administration (Studio → Thème → Identité,
+ * src/settings/theme.json) ; les valeurs ci-dessous restent la référence.
  */
+import { settings } from '@/lib/settings';
+
+const identity = settings.theme.identity ?? {};
 
 export interface SocialLink {
   /** Nom affiché, ex. « LinkedIn » */
@@ -40,8 +46,8 @@ export interface SiteConfig {
 }
 
 export const site: SiteConfig = {
-  name: 'Ibrahima Faye',
-  initials: 'IF',
+  name: identity.name?.trim() || 'Ibrahima Faye',
+  initials: identity.initials?.trim() || 'IF',
 
   contact: {
     email: '',

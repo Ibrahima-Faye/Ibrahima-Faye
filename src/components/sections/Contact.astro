@@ -2,12 +2,15 @@
 import { useTranslations, type Locale } from '@/i18n';
 import { site, type SocialLink } from '@/config/site';
 import Icon, { type IconName } from '@/components/ui/Icon.astro';
+import type { SectionProps } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
+  /** Réglages de la section (Studio → Sections) : ancre, fond, hauteur, effets. */
+  section?: SectionProps;
 }
 
-const { locale } = Astro.props;
+const { locale, section } = Astro.props;
 const t = useTranslations(locale);
 const { contact } = site;
 
@@ -48,17 +51,22 @@ const nothingConfigured = channels.length === 0 && socials.length === 0 && !hasF
 ---
 
 <section
-  id="contact"
-  class="relative isolate overflow-hidden py-28 md:py-44"
+  id={section?.id ?? 'contact'}
+  data-section="contact"
+  data-anim="contact.section"
+  style={`--pad-md:11rem;${section?.style ?? ''}`}
+  {...section?.attrs}
+  class="section-pad relative isolate overflow-hidden"
   aria-labelledby="contact-title"
 >
   <div
-    class="bg-electric-600/15 pointer-events-none absolute bottom-[-20rem] left-1/2 -z-10 size-[56rem] -translate-x-1/2 rounded-full blur-[160px]"
+    data-section-deco
+    class="fx-glow bg-electric-600/15 pointer-events-none absolute bottom-[-20rem] left-1/2 -z-10 size-[56rem] -translate-x-1/2 rounded-full blur-[160px]"
     aria-hidden="true"
   ></div>
 
   <div class="container-x">
-    <p class="eyebrow mb-8 flex items-center gap-4" data-reveal="fade">
+    <p class="eyebrow mb-8 flex items-center gap-4" data-reveal="fade" data-anim="contact.eyebrow">
       <span class="text-paper-faint">05</span>
       <span class="bg-mauve-400/50 h-px w-10"></span>
       <span>{t.contact.eyebrow}</span>
@@ -67,6 +75,7 @@ const nothingConfigured = channels.length === 0 && socials.length === 0 && !hasF
       id="contact-title"
       class="font-display max-w-5xl text-[clamp(1.55rem,7.4vw,4.8rem)] leading-[1] font-extrabold tracking-[-0.035em] uppercase"
       data-split="lines"
+      data-anim="contact.title"
     >
       {t.contact.title}
     </h2>
@@ -168,7 +177,7 @@ const nothingConfigured = channels.length === 0 && socials.length === 0 && !hasF
               data-form-status
               role="status"
               aria-live="polite"
-              class="text-paper-muted text-sm data-[state=error]:text-red-300 data-[state=success]:text-lavender-100"
+              class="text-paper-muted text-sm data-[state=error]:text-(--color-error) data-[state=success]:text-(--color-success)"
             />
           </div>
         </form>

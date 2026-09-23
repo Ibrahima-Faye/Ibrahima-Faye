@@ -1,19 +1,29 @@
 ---
 import { domainSlugs } from '@/data/domains';
 import { useTranslations, type Locale } from '@/i18n';
+import type { SectionProps } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
+  /** Réglages de la section (Studio → Sections) : ancre, fond, hauteur, effets. */
+  section?: SectionProps;
 }
 
-const { locale } = Astro.props;
+const { locale, section } = Astro.props;
 const t = useTranslations(locale);
 const titles = domainSlugs.map((slug) => t.domains[slug].title);
 ---
 
 <!-- Bandeau décoratif : les 7 domaines en défilement continu (pause si mouvement réduit). -->
-<div class="relative overflow-hidden border-y border-white/[0.07] py-6 md:py-8" aria-hidden="true">
-  <div class="marquee-track">
+<div
+  class="relative overflow-hidden border-y border-white/[0.07] py-6 md:py-8"
+  aria-hidden="true"
+  data-section="marquee"
+  id={section?.id}
+  style={section?.style}
+  {...section?.attrs}
+>
+  <div class="marquee-track" data-anim="marquee.track">
     {[0, 1].map(() => (
       <ul class="flex shrink-0 items-center">
         {titles.map((title, i) => (

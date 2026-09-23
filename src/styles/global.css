@@ -2,6 +2,11 @@
 @import '@fontsource-variable/syne';
 @import '@fontsource-variable/manrope';
 @import '@fontsource-variable/jetbrains-mono';
+/* Polices proposées par le Theme Editor (téléchargées seulement si elles sont utilisées) */
+@import '@fontsource-variable/space-grotesk';
+@import '@fontsource-variable/unbounded';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/fraunces';
 
 /* ==========================================================================
    Design tokens — direction artistique :
@@ -69,7 +74,7 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    html {
+    html:not([data-smooth='off']) {
       scroll-behavior: smooth;
     }
   }
@@ -78,8 +83,11 @@
     background-color: var(--color-ink-950);
     min-height: 100svh;
     overflow-x: clip;
-    font-size: 1rem;
-    line-height: 1.65;
+    /* réglables dans le Theme Editor (src/settings/theme.json) ; valeurs d'origine par défaut */
+    font-size: var(--text-base, 1rem);
+    font-weight: var(--body-weight, 400);
+    line-height: var(--leading-body, 1.65);
+    letter-spacing: var(--body-tracking, normal);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -92,7 +100,7 @@
     inset: 0;
     z-index: 90;
     pointer-events: none;
-    opacity: 0.045;
+    opacity: var(--grain, 0.045);
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
 
@@ -112,9 +120,9 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    font-weight: 700;
+    font-weight: var(--heading-weight, 700);
     line-height: 1.02;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--heading-tracking, -0.02em);
     text-wrap: balance;
     /* filet de sécurité : un mot très long ne doit jamais déborder de l'écran */
     overflow-wrap: anywhere;
@@ -161,9 +169,29 @@
    ========================================================================== */
 @utility container-x {
   width: 100%;
-  max-width: 96rem;
+  max-width: var(--container-max, 96rem);
   margin-inline: auto;
-  padding-inline: clamp(1.25rem, 4.5vw, 4rem);
+  padding-inline: var(--container-pad, clamp(1.25rem, 4.5vw, 4rem));
+}
+
+/*
+  Espacement vertical des sections : valeurs d'origine (--pad-sm / --pad-md, posées par chaque section)
+  × multiplicateur du thème (--space-y) ou de la section (--sec-space, par appareil possible).
+*/
+@utility section-pad {
+  padding-block: calc(
+    var(--pad-sm, 7rem) * var(--sec-space-mobile, var(--sec-space, var(--space-y, 1)))
+  );
+  @media (width >= 48rem) {
+    padding-block: calc(
+      var(--pad-md, 10rem) * var(--sec-space-tablet, var(--sec-space, var(--space-y, 1)))
+    );
+  }
+  @media (width >= 64rem) {
+    padding-block: calc(
+      var(--pad-md, 10rem) * var(--sec-space-desktop, var(--sec-space, var(--space-y, 1)))
+    );
+  }
 }
 
 @utility eyebrow {
@@ -199,8 +227,8 @@
 
 @utility display-lg {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2.2rem, 5.4vw, 4.75rem);
+  font-weight: var(--heading-weight, 700);
+  font-size: calc(clamp(2.2rem, 5.4vw, 4.75rem) * var(--type-scale, 1));
   letter-spacing: -0.03em;
   line-height: 1;
 }
@@ -211,10 +239,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
-  padding: 0.95rem 1.6rem;
-  border-radius: 999px;
+  padding: var(--btn-py, 0.95rem) var(--btn-px, 1.6rem);
+  border-radius: var(--btn-radius, 999px);
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: var(--btn-font, 0.9rem);
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -268,9 +296,9 @@
 
 .btn-ghost {
   color: var(--color-paper);
-  border: 1px solid rgb(200 169 255 / 0.28);
-  background: rgb(11 18 51 / 0.35);
-  backdrop-filter: blur(10px);
+  border: 1px solid var(--line-strong, rgb(200 169 255 / 0.28));
+  background: var(--surface-glass, rgb(11 18 51 / 0.35));
+  backdrop-filter: blur(var(--glass-blur, 10px));
 }
 
 .btn-ghost:hover {
@@ -299,7 +327,7 @@
   gap: 0.4rem;
   padding: 0.32rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid rgb(200 169 255 / 0.2);
+  border: 1px solid var(--line, rgb(200 169 255 / 0.2));
   background: rgb(123 77 255 / 0.08);
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -311,7 +339,170 @@
 /* Réglet vertical de section (fond) */
 .section-rule {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgb(200 169 255 / 0.3), transparent);
+  background: linear-gradient(90deg, transparent, var(--line, rgb(200 169 255 / 0.3)), transparent);
+}
+
+/* ==========================================================================
+   Theme Editor & sections (src/settings/*.json) — sans réglage, rien ne change.
+   ========================================================================== */
+:root {
+  --color-success: var(--color-lavender-100);
+  --color-warning: #f0b450;
+  --color-error: #ff6b8a;
+}
+
+/* Halos lumineux décoratifs : intensité réglable */
+.fx-glow {
+  opacity: var(--glow, 1);
+}
+
+html[data-glass='off'] *,
+html[data-glass='off'] *::before,
+html[data-glass='off'] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-shadows='off'] .btn,
+html[data-shadows='off'] .btn:hover {
+  box-shadow: none;
+}
+
+html[data-shadows='strong'] .btn-primary {
+  box-shadow:
+    0 0 0 1px rgb(200 169 255 / 0.35) inset,
+    0 18px 60px -8px var(--color-electric-500);
+}
+
+html[data-gradients='off'] .text-gradient {
+  background: none;
+  color: var(--color-mauve-300);
+}
+
+html[data-gradients='off'] .btn-primary,
+html[data-buttons='solid'] .btn-primary {
+  background: var(--color-electric-500);
+}
+
+html[data-gradients='off'] .btn-primary::before,
+html[data-buttons='solid'] .btn-primary::before {
+  background: var(--color-electric-400);
+}
+
+html[data-buttons='outline'] .btn-primary {
+  background: transparent;
+  border: 1px solid var(--color-electric-400);
+  box-shadow: none;
+}
+
+html[data-buttons='outline'] .btn-primary::before {
+  background: rgb(123 77 255 / 0.18);
+}
+
+/* Grille de fond (texture fixe, comme le grain) */
+html[data-grid='on'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  pointer-events: none;
+  opacity: var(--grid-opacity, 0.06);
+  background-image:
+    linear-gradient(var(--color-lavender-100) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-lavender-100) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 80%);
+}
+
+html[data-particles='off'] [data-hero-canvas] {
+  display: none;
+}
+
+/* En-tête : toujours opaque / toujours transparent */
+html[data-header-style='solid'] [data-header-bg] {
+  background-color: color-mix(in oklab, var(--color-ink-950) 82%, transparent);
+  backdrop-filter: blur(24px);
+  border-color: rgb(255 255 255 / 0.06);
+}
+
+html[data-header-style='transparent'] [data-header-bg] {
+  background: none !important;
+  backdrop-filter: none !important;
+  border-color: transparent !important;
+}
+
+html[data-footer-glow='off'] footer [data-section-deco] {
+  display: none;
+}
+
+/* Lien actif de la navigation */
+html[data-nav-active='underline'] [data-header] nav [data-nav-link][data-active='true'] {
+  background-size: 100% 1px;
+}
+
+html[data-nav-active='dot'] [data-header] nav [data-nav-link]:not(.btn)[data-active='true'] {
+  position: relative;
+}
+
+html[data-nav-active='dot'] [data-header] nav [data-nav-link]:not(.btn)[data-active='true']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -0.45rem;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-mauve-300);
+  transform: translateX(-50%);
+}
+
+/* Sections : fond personnalisé, effets coupés, hauteur imposée */
+[data-section-bg] > [data-section-deco],
+[data-section-fx='off'] [data-section-deco] {
+  display: none;
+}
+
+[data-section-height] {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Curseur personnalisé (Theme Editor → Effets) */
+.site-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 95;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate3d(-100px, -100px, 0);
+  transition:
+    width 0.3s var(--ease-out-expo),
+    height 0.3s var(--ease-out-expo),
+    opacity 0.3s;
+}
+
+.site-cursor[data-kind='dot'] {
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: var(--color-mauve-300);
+  mix-blend-mode: difference;
+}
+
+.site-cursor[data-kind='ring'] {
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px solid var(--color-mauve-300);
+}
+
+.site-cursor[data-hover='true'][data-kind='ring'] {
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  background: rgb(123 77 255 / 0.12);
 }
 
 /* ==========================================================================
@@ -356,7 +547,8 @@ html[data-motion='off'] [data-intro] {
 .marquee-track {
   display: flex;
   width: max-content;
-  animation: marquee 60s linear infinite;
+  animation: marquee var(--marquee-duration, 60s) linear infinite;
+  animation-direction: var(--marquee-direction, normal);
 }
 
 @media (prefers-reduced-motion: reduce) {

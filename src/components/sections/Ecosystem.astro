@@ -5,14 +5,17 @@ import type { EntitySlug } from '@/data/entities';
 import Icon from '@/components/ui/Icon.astro';
 import SectionHeading from '@/components/ui/SectionHeading.astro';
 import { site } from '@/config/site';
+import type { SectionProps } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
   /** Nombre de projets par entité (le lien « Voir les projets » n'apparaît que s'il y en a). */
   counts: Map<EntitySlug, number>;
+  /** Réglages de la section (Studio → Sections) : ancre, fond, hauteur, effets. */
+  section?: SectionProps;
 }
 
-const { locale, counts } = Astro.props;
+const { locale, counts, section } = Astro.props;
 const t = useTranslations(locale);
 const projectsPath = localizedPath('/projets/', locale);
 
@@ -26,11 +29,16 @@ const entities = (['clicgraph', 'jeefsys'] as const).map((slug, i) => ({
 ---
 
 <section
-  id="ecosysteme"
-  class="relative isolate overflow-hidden py-28 md:py-40"
+  id={section?.id ?? 'ecosysteme'}
+  data-section="ecosystem"
+  data-anim="ecosystem.section"
+  style={section?.style}
+  {...section?.attrs}
+  class="section-pad relative isolate overflow-hidden"
   aria-labelledby="ecosysteme-title"
 >
   <div
+    data-section-deco
     class="absolute inset-0 -z-10 bg-[radial-gradient(60%_45%_at_50%_62%,var(--color-navy-800)_0%,transparent_100%)] opacity-80"
     aria-hidden="true"
   ></div>
@@ -38,6 +46,7 @@ const entities = (['clicgraph', 'jeefsys'] as const).map((slug, i) => ({
   <div class="container-x">
     <SectionHeading
       headingId="ecosysteme-title"
+      anim="ecosystem"
       index="03"
       eyebrow={t.ecosystem.eyebrow}
       title={t.ecosystem.title}
@@ -74,7 +83,7 @@ const entities = (['clicgraph', 'jeefsys'] as const).map((slug, i) => ({
       </div>
       <div class="bg-mauve-400/40 mx-auto h-12 w-px lg:hidden" aria-hidden="true"></div>
 
-      <div class="grid gap-6 lg:grid-cols-2 lg:gap-8">
+      <div class="grid gap-6 lg:grid-cols-2 lg:gap-8" data-anim="ecosystem.panels">
         {entities.map((e) => (
           <article
             data-panel

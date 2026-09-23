@@ -172,9 +172,12 @@ function setupHero() {
 
   // Le contenu s'éloigne et s'estompe au scroll ; le champ 3D dérive plus lentement (profondeur).
   const content = hero.querySelector<HTMLElement>('[data-hero-content]');
+  // (sauf si l'Animation Studio a repris la section ou le fond : data-anim-owned)
   const scrollTrigger = { trigger: hero, start: 'top top', end: 'bottom top', scrub: true };
-  if (content) gsap.to(content, { yPercent: -14, opacity: 0.05, ease: 'none', scrollTrigger });
-  if (canvas) gsap.to(canvas, { yPercent: 12, scale: 1.06, ease: 'none', scrollTrigger });
+  if (content && !hero.hasAttribute('data-anim-owned'))
+    gsap.to(content, { yPercent: -14, opacity: 0.05, ease: 'none', scrollTrigger });
+  if (canvas && !canvas.closest('[data-anim-owned]'))
+    gsap.to(canvas, { yPercent: 12, scale: 1.06, ease: 'none', scrollTrigger });
 }
 
 function setupConnector() {

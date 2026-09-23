@@ -7,6 +7,8 @@ export interface Meta {
   entities: { slug: string; name: string; role: string }[];
   statuses: { slug: string; label: string }[];
   spans: SpanInfo[];
+  /** Studio : textes d'origine du site (chemin du dictionnaire → texte) et libellés de navigation. */
+  studio?: { texts: Record<string, string | string[]>; nav: Record<string, string> };
 }
 
 export interface ProjectSummary {
@@ -147,7 +149,19 @@ export type Route =
   | { name: 'dashboard' }
   | { name: 'projects' }
   | { name: 'new' }
-  | { name: 'edit'; slug: string; tab: 'infos' | 'galerie' | 'apercu' };
+  | { name: 'edit'; slug: string; tab: 'infos' | 'galerie' | 'apercu' }
+  | { name: 'studio'; tab: StudioTab };
+
+export type StudioTab = 'theme' | 'animations' | 'sections' | 'navigation';
+
+export type SettingsName = 'theme' | 'layout' | 'navigation' | 'animations';
+
+/** Réglages du site (src/settings/<name>.json) tels que renvoyés par l'API. */
+export interface SettingsFile {
+  name: SettingsName;
+  data: Record<string, unknown>;
+  updatedAt: number;
+}
 
 export interface View {
   dispose(): void | Promise<void>;

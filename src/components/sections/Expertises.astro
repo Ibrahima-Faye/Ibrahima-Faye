@@ -7,14 +7,17 @@ import DomainIcon from '@/components/ui/DomainIcon.astro';
 import Icon from '@/components/ui/Icon.astro';
 import SectionHeading from '@/components/ui/SectionHeading.astro';
 import type { DomainSlug } from '@/data/domains';
+import type { SectionProps } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
   /** Nombre de projets par domaine (les domaines sans projet ne sont pas cliquables). */
   counts: Map<DomainSlug, number>;
+  /** Réglages de la section (Studio → Sections) : ancre, fond, hauteur, effets. */
+  section?: SectionProps;
 }
 
-const { locale, counts } = Astro.props;
+const { locale, counts, section } = Astro.props;
 const t = useTranslations(locale);
 const projectsPath = localizedPath('/projets/', locale);
 
@@ -31,10 +34,19 @@ const rows = domainSlugs.map((slug) => {
 });
 ---
 
-<section id="expertises" class="relative py-28 md:py-40" aria-labelledby="expertises-title">
+<section
+  id={section?.id ?? 'expertises'}
+  data-section="expertises"
+  data-anim="expertises.section"
+  style={section?.style}
+  {...section?.attrs}
+  class="section-pad relative"
+  aria-labelledby="expertises-title"
+>
   <div class="container-x">
     <SectionHeading
       headingId="expertises-title"
+      anim="expertises"
       index="01"
       eyebrow={t.expertises.eyebrow}
       title={t.expertises.title}
@@ -46,7 +58,7 @@ const rows = domainSlugs.map((slug) => {
       data-expertises
     >
       <!-- Liste : chaque ligne active son visuel (survol, focus clavier, ou position au scroll) -->
-      <ol class="border-t border-white/10">
+      <ol class="border-t border-white/10" data-anim="expertises.items">
         {rows.map((row) => {
           const Tag = row.href ? 'a' : 'div';
           return (

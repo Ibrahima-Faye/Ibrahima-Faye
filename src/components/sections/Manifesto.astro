@@ -1,22 +1,38 @@
 ---
 import { useTranslations, type Locale } from '@/i18n';
+import type { SectionProps } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
+  /** Réglages de la section (Studio → Sections) : ancre, fond, hauteur, effets. */
+  section?: SectionProps;
 }
 
-const { locale } = Astro.props;
+const { locale, section } = Astro.props;
 const t = useTranslations(locale);
 ---
 
-<section class="relative isolate overflow-hidden py-32 md:py-48" aria-label={t.manifesto.eyebrow}>
+<section
+  data-section="manifesto"
+  data-anim="manifesto.section"
+  id={section?.id}
+  style={`--pad-sm:8rem;--pad-md:12rem;${section?.style ?? ''}`}
+  {...section?.attrs}
+  class="section-pad relative isolate overflow-hidden"
+  aria-label={t.manifesto.eyebrow}
+>
   <div
-    class="bg-electric-600/10 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[44rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[150px]"
+    data-section-deco
+    class="fx-glow bg-electric-600/10 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[44rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[150px]"
     aria-hidden="true"
   ></div>
 
   <div class="container-x">
-    <p class="eyebrow mb-10 flex items-center gap-4" data-reveal="fade">
+    <p
+      class="eyebrow mb-10 flex items-center gap-4"
+      data-reveal="fade"
+      data-anim="manifesto.eyebrow"
+    >
       <span class="bg-mauve-400/50 h-px w-10"></span>
       {t.manifesto.eyebrow}
     </p>
@@ -24,6 +40,7 @@ const t = useTranslations(locale);
     <p
       class="font-display max-w-6xl text-[clamp(1.55rem,3.5vw,3.15rem)] leading-[1.18] font-semibold tracking-[-0.02em]"
       data-split="scrub"
+      data-anim="manifesto.statement"
     >
       {t.manifesto.statement}
     </p>
@@ -33,6 +50,7 @@ const t = useTranslations(locale);
       class="mt-20 flex flex-wrap items-center gap-x-5 gap-y-3 md:mt-28"
       aria-label={t.manifesto.equation.join(' + ')}
       data-reveal
+      data-anim="manifesto.items"
     >
       {t.manifesto.equation.map((word, i) => (
         <>

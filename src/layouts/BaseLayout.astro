@@ -5,6 +5,8 @@ import { defaultLocale, useTranslations, type Locale } from '@/i18n';
 import SEO from '@/components/seo/SEO.astro';
 import Header from '@/components/layout/Header.astro';
 import Footer from '@/components/layout/Footer.astro';
+import { settings } from '@/lib/settings';
+import { themeToCss } from '@/lib/studio/theme';
 
 interface Props {
   locale?: Locale;
@@ -22,17 +24,25 @@ interface Props {
 
 const { locale = defaultLocale, page, ...seo } = Astro.props;
 const t = useTranslations(locale);
+
+// Réglages du Studio (src/settings/) : thème (seulement ce qui est réglé), favicon, animations.
+const theme = themeToCss(settings.theme);
+const favicon = settings.theme.identity?.favicon || '/favicon.svg';
+const nav = settings.navigation;
+const navActive = nav.active?.enabled === false ? 'off' : nav.active?.style;
+const footerVisible = settings.layout.sections?.footer?.visible !== false;
 ---
 
 <!doctype html>
-<html lang={t.meta.lang} data-page={page}>
+<html lang={t.meta.lang} data-page={page} data-nav-active={navActive} {...theme.attrs}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" content="#04050d" />
+    <meta name="theme-color" content={settings.theme.colors?.bg ?? '#04050d'} />
     <meta name="color-scheme" content="dark" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href={favicon} type={favicon.endsWith('.svg') ? 'image/svg+xml' : undefined} />
+    {theme.css && <style is:inline id="site-theme" set:html={theme.css}></style>}
     <SEO locale={locale} {...seo} />
     <ClientRouter />
     <noscript>
@@ -58,7 +68,12 @@ const t = useTranslations(locale);
     <main id="main">
       <slot />
     </main>
-    <Footer locale={locale} />
+    {footerVisible && <Footer locale={locale} />}
+    <script
+      type="application/json"
+      id="site-animations"
+      set:html={JSON.stringify(settings.animations)}
+    ></script>
     <script>
       import '@/scripts/main';
     </script>

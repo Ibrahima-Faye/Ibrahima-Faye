@@ -14,6 +14,8 @@ import { initCarousels } from './carousel';
 import { initContactForm } from './contact-form';
 import { initExpertises } from './expertises';
 import { mountHeroField } from './hero-field';
+import { initCursor } from './cursor';
+import { initStudio, readAnimations } from './studio/runtime';
 
 let cleanups: Array<() => void> = [];
 
@@ -41,13 +43,30 @@ function init() {
   cleanups.push(initCarousels());
   cleanups.push(initExpertises());
 
-  const canvas = document.querySelector<HTMLCanvasElement>('[data-hero-canvas]');
-  if (canvas) cleanups.push(mountHeroField(canvas));
+  cleanups.push(initCursor());
 
-  cleanups.push(initMotion());
+  // champ 3D du Hero : coupé si « particules » est désactivé dans le thème
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-hero-canvas]');
+  if (canvas && document.documentElement.dataset.particles !== 'off')
+    cleanups.push(mountHeroField(canvas));
+
+  // Animation Studio (src/settings/animations.json) : d'abord les éléments réglés, puis les animations
+  // d'origine pour tout le reste. « Animations désactivées » : tout le contenu reste simplement visible.
+  const animations = readAnimations();
+  if (animations.enabled === false) document.documentElement.dataset.motion = 'off';
+  else {
+    cleanups.push(initStudio(animations));
+    cleanups.push(initMotion());
+  }
   // après les animations : les titres sont découpés, les positions sont celles de la page finale
   cleanups.push(initNavigation());
 }
 
 document.addEventListener('astro:page-load', init);
 document.addEventListener('astro:before-swap', dispose);
+
+// Aperçu du Studio (administration locale) : réglages appliqués en direct. Absent du site publié.
+if (import.meta.env.DEV) {
+  document.addEventListener('studio:reinit', init);
+  void import('./studio/bridge');
+}

@@ -10,6 +10,7 @@
 import { fileURLToPath } from 'node:url';
 import { createApi } from './api.mjs';
 import { createStore } from './store.mjs';
+import { createSettings } from './settings.mjs';
 import { createJobs } from './media/jobs.mjs';
 import { formatOf, listOriginals, readManifest, staleFiles } from './media/pipeline.mjs';
 import { readdir } from 'node:fs/promises';
@@ -49,7 +50,8 @@ export default function localCms() {
         // l'API charge les MÊMES modules que le site (règles des médias, schémas, listes) via Vite
         const projectsDir = path.join(root, 'src/content/projects');
         const jobs = createJobs(projectsDir);
-        const api = createApi(createStore(root, { load: (id) => server.ssrLoadModule(id), jobs }));
+        const load = (id) => server.ssrLoadModule(id);
+        const api = createApi(createStore(root, { load, jobs }), createSettings(root, { load }));
         server.middlewares.use('/__cms', (req, res) => void api(req, res));
 
         // En local, tout média sans version web à jour (déposé à la main, copié, modifié…) est traité

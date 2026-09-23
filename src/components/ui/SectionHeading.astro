@@ -7,22 +7,29 @@ interface Props {
   index?: string;
   class?: string;
   headingId?: string;
+  /** Préfixe des éléments animables (Animation Studio), ex. « expertises » → expertises.title */
+  anim?: string;
 }
 
-const { eyebrow, title, intro, index, class: className = '', headingId } = Astro.props;
+const { eyebrow, title, intro, index, class: className = '', headingId, anim } = Astro.props;
+const a = (part: string) => (anim ? `${anim}.${part}` : undefined);
 ---
 
 <header class:list={['relative max-w-4xl', className]}>
-  <p class="eyebrow flex items-center gap-4" data-reveal="fade">
+  <p class="eyebrow flex items-center gap-4" data-reveal="fade" data-anim={a('eyebrow')}>
     {index && <span class="text-paper-faint">{index}</span>}
     <span class="h-px w-10 bg-mauve-400/50"></span>
     <span>{eyebrow}</span>
   </p>
-  <h2 id={headingId} class="display-lg mt-6" data-split="lines">
+  <h2 id={headingId} class="display-lg mt-6" data-split="lines" data-anim={a('title')}>
     {title}
   </h2>
   {intro && (
-    <p class="text-paper-muted mt-6 max-w-2xl text-lg leading-relaxed" data-reveal>
+    <p
+      class="text-paper-muted mt-6 max-w-2xl text-lg leading-relaxed"
+      data-reveal
+      data-anim={a('intro')}
+    >
       {intro}
     </p>
   )}

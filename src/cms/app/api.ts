@@ -1,4 +1,4 @@
-import type { FileInfo, ProjectData, ProjectDetail, ProjectSummary } from './types';
+import type { FileInfo, ProjectData, ProjectDetail, ProjectSummary, SettingsFile } from './types';
 
 const BASE = '/__cms';
 /** En-tête exigé par le serveur pour toute modification : un autre site web ne peut pas l'envoyer. */
@@ -60,6 +60,29 @@ export const api = {
       busy: boolean;
       files: Record<string, { state: string; progress?: number; error?: string }>;
     }>('GET', `/api/projects/${slug}/optimize`),
+  /** Réglages du site (Studio). */
+  settings: () => request<Record<SettingsFile['name'], SettingsFile>>('GET', '/api/settings'),
+  saveSettings: (
+    name: SettingsFile['name'],
+    payload: { data: unknown; baseUpdatedAt?: number; force?: boolean },
+  ) =>
+    request<{ name: string; updatedAt: number; unchanged?: boolean }>(
+      'PUT',
+      `/api/settings/${name}`,
+      payload,
+    ),
+  /** Image d'identité (logo, favicon) → public/identite/. */
+  uploadIdentity: async (file: File) => {
+    const response = await fetch(`${BASE}/api/identity?name=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      headers: { ...HEADERS, 'Content-Type': 'application/octet-stream' },
+      body: file,
+    });
+    const json = (await response.json().catch(() => ({}))) as { path?: string; error?: string };
+    if (!response.ok)
+      throw new ApiError(response.status, json.error ?? `Erreur ${response.status}`);
+    return json as { path: string };
+  },
   deleteMedia: (slug: string, file: string) =>
     request<{ removed: string[] }>(
       'DELETE',

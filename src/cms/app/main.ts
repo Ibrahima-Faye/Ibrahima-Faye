@@ -8,6 +8,7 @@
  *   #/projets/<slug>         Éditeur → Informations
  *   #/projets/<slug>/galerie Éditeur → Galerie
  *   #/projets/<slug>/apercu  Éditeur → Prévisualisation
+ *   #/studio/<onglet>        Studio : theme | animations | sections | navigation
  */
 import type { Meta, Route, View } from './types';
 import { h, icon } from './ui';
@@ -15,6 +16,10 @@ import { mountDashboard } from './views/dashboard';
 import { mountEditor } from './views/editor';
 import { mountNewProject } from './views/new-project';
 import { mountProjects } from './views/projects';
+import { mountStudio } from './views/studio';
+import type { StudioTab } from './types';
+
+const STUDIO_TABS: StudioTab[] = ['theme', 'animations', 'sections', 'navigation'];
 
 /*
   Le serveur de développement recharge TOUTES les pages quand un fichier du site change (nouveau média,
@@ -36,6 +41,10 @@ const meta = JSON.parse(document.getElementById('cms-meta')!.textContent ?? '{}'
 
 function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  if (parts[0] === 'studio') {
+    const tab = STUDIO_TABS.find((t) => t === parts[1]) ?? 'theme';
+    return { name: 'studio', tab };
+  }
   if (parts[0] !== 'projets') return { name: 'dashboard' };
   if (!parts[1]) return { name: 'projects' };
   if (parts[1] === 'nouveau') return { name: 'new' };
@@ -51,6 +60,7 @@ const NAV = [
   { id: 'dashboard', label: 'Tableau de bord', href: '#/', icon: 'dashboard' as const },
   { id: 'projects', label: 'Projets', href: '#/projets', icon: 'folder' as const },
   { id: 'new', label: 'Nouveau projet', href: '#/projets/nouveau', icon: 'plus' as const },
+  { id: 'studio', label: 'Studio', href: '#/studio/theme', icon: 'layout' as const },
 ];
 
 function renderNav(route: Route) {
@@ -138,7 +148,9 @@ async function navigate() {
         ? await mountProjects(main, meta)
         : route.name === 'new'
           ? mountNewProject(main, meta)
-          : await mountEditor(main, route, meta);
+          : route.name === 'studio'
+            ? await mountStudio(main, route, meta)
+            : await mountEditor(main, route, meta);
 
   if (id !== token) {
     await view.dispose(); // une navigation plus récente a pris le relais
@@ -146,7 +158,11 @@ async function navigate() {
   }
   current = { route, view };
   document.title =
-    route.name === 'edit' ? `${route.slug} — Administration` : 'Administration — Ibrahima Faye';
+    route.name === 'edit'
+      ? `${route.slug} — Administration`
+      : route.name === 'studio'
+        ? 'Studio — Administration'
+        : 'Administration — Ibrahima Faye';
 }
 
 window.addEventListener('hashchange', () => void navigate());
