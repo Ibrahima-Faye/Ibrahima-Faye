@@ -10,6 +10,7 @@ import Sortable from 'sortablejs';
 import { ALIGNS, SPAN_INFO, defaultSpan, type Align, type Span } from '@/lib/gallery-layout';
 import { acceptAttribute, formatLabels, kindOf } from '@/lib/media-rules';
 import { api, fileUrl, thumbUrl, upload } from '../api';
+import { captureFrame, probeVideo } from '../media-probe';
 import { itemRatio, type Editor } from '../editor-state';
 import type { GalleryItem } from '../types';
 import { confirmModal, describeRatio, formatBytes, h, icon, toast, type IconName } from '../ui';
@@ -28,48 +29,6 @@ const PRESETS: { id: string; label: string }[] = [
   { id: 'three', label: '3 par ligne' },
   { id: 'four', label: '4 par ligne' },
 ];
-
-/* ------------------------------------------------------------------ vidéos : lecture des dimensions + image d'affiche */
-async function captureFrame(video: HTMLVideoElement, maxWidth = 1920): Promise<Blob | null> {
-  if (!video.videoWidth) return null;
-  const scale = Math.min(1, maxWidth / video.videoWidth);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(video.videoWidth * scale);
-  canvas.height = Math.round(video.videoHeight * scale);
-  canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.86));
-}
-
-async function probeVideo(
-  file: File,
-): Promise<{ width: number; height: number; poster: Blob | null }> {
-  const url = URL.createObjectURL(file);
-  const video = document.createElement('video');
-  video.muted = true;
-  video.preload = 'auto';
-  video.playsInline = true;
-  video.src = url;
-  const wait = (event: string, ms = 8000) =>
-    new Promise<boolean>((resolve) => {
-      const timer = setTimeout(() => resolve(false), ms);
-      video.addEventListener(event, () => (clearTimeout(timer), resolve(true)), { once: true });
-    });
-  try {
-    if (!(await wait('loadeddata'))) return { width: 0, height: 0, poster: null };
-    const result = {
-      width: video.videoWidth,
-      height: video.videoHeight,
-      poster: null as Blob | null,
-    };
-    video.currentTime = Math.min(1, (video.duration || 1) * 0.1);
-    if (await wait('seeked', 5000)) result.poster = await captureFrame(video);
-    return result;
-  } finally {
-    URL.revokeObjectURL(url);
-    video.removeAttribute('src');
-    video.load();
-  }
-}
 
 /* ------------------------------------------------------------------ vue */
 export function mountGallery(host: HTMLElement, editor: Editor): () => void {

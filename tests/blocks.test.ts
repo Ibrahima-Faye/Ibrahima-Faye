@@ -128,15 +128,33 @@ describe('exemple validé : 5 blocs', () => {
     expect(uses).toHaveLength(2);
   });
 
-  it('réglages propres au carrousel conservés pour son futur rendu (affiché en grille d’ici là, sans perte)', () => {
+  it('carrousel : vrai carrousel, médias visibles par appareil, réglages conservés', () => {
     const c = blocks.find((b) => b.id === 'b-carrousel')!;
+    expect(c.layout).toBe('carousel');
     expect(c.items).toHaveLength(4);
-    expect(c.options).toMatchObject({
-      perView: { desktop: 1.2 },
+    expect(c.carousel).toEqual({
+      perView: { desktop: 1.2, tablet: 1, mobile: 1 },
       loop: true,
+      autoplay: 0,
       controls: ['arrows', 'dots'],
     });
-    expect(c.notice).toBeTruthy();
+    expect(c.notice).toBeUndefined();
+  });
+
+  it('carrousel sans réglage : 1 média visible, flèches + points, pas de boucle ni défilement automatique', () => {
+    const out = normalizeGallery({
+      files,
+      unplaced: 'hide',
+      blocks: [
+        { id: 'c', type: 'carousel', items: [{ file: 'convoyor.jpg' }, { file: 'page1-1.jpg' }] },
+      ],
+    });
+    expect(out.blocks[0]!.carousel).toEqual({
+      perView: { desktop: 1, tablet: 1, mobile: 1 },
+      loop: false,
+      autoplay: 0,
+      controls: ['arrows', 'dots'],
+    });
   });
 });
 

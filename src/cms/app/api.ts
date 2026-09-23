@@ -19,9 +19,19 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   }
   if (!response.ok) {
     const message = (json as { error?: string })?.error ?? `Erreur ${response.status}`;
-    throw new Error(message);
+    throw new ApiError(response.status, message);
   }
   return json as T;
+}
+
+/** Erreur renvoyée par l'API (409 = projet modifié ailleurs). */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
 }
 
 export const api = {
@@ -29,8 +39,16 @@ export const api = {
   get: (slug: string) => request<ProjectDetail>('GET', `/api/projects/${slug}`),
   create: (input: Partial<ProjectData> & { title: string; category: string; slug?: string }) =>
     request<ProjectDetail>('POST', '/api/projects', input),
-  save: (slug: string, payload: { data: ProjectData; body: string }) =>
-    request<{ slug: string; updatedAt: number }>('PUT', `/api/projects/${slug}`, payload),
+  /** `baseUpdatedAt` : version ouverte (conflit 409 si le fichier a changé depuis) ; `force` : écraser quand même. */
+  save: (
+    slug: string,
+    payload: { data: ProjectData; body: string; baseUpdatedAt?: number; force?: boolean },
+  ) =>
+    request<{ slug: string; updatedAt: number; unchanged?: boolean }>(
+      'PUT',
+      `/api/projects/${slug}`,
+      payload,
+    ),
   remove: (slug: string) => request<{ trashed: string }>('DELETE', `/api/projects/${slug}`),
   rename: (slug: string, next: string) =>
     request<{ slug: string }>('POST', `/api/projects/${slug}/rename`, { slug: next }),

@@ -4,10 +4,17 @@
  */
 import { DEFAULT_ALIGN, defaultSpan, parseRatio, type Span } from '@/lib/gallery-layout';
 import { effectiveCover, galleryEntries } from '@/lib/media-rules';
-import { api } from './api';
+import type { Block } from '@/schemas/blocks';
+import { api, ApiError } from './api';
 import type { FileInfo, GalleryItem, MediaEntry, ProjectData, ProjectDetail } from './types';
 
-export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'error';
+/**
+ * `error` : échec (réseau…) — nouvel essai automatique toutes les 5 s ;
+ * `conflict` : le fichier a été modifié ailleurs — l'utilisateur choisit (recharger ou écraser).
+ */
+export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'error' | 'conflict';
+
+const RETRY_MS = 5000;
 
 /** Ratio (largeur / hauteur) d'un média de la galerie. */
 export function itemRatio(item: GalleryItem, files: FileInfo[]): number {
@@ -33,6 +40,7 @@ export class Editor {
   private rev = 0;
   private savedRev = 0;
   private timer = 0;
+  private retryTimer = 0;
   private saving = false;
   private pending: Promise<void> = Promise.resolve();
   private listeners = new Set<() => void>();
@@ -75,9 +83,22 @@ export class Editor {
     });
   }
 
-  /** Le projet est-il mis en page en blocs ? (la composition ci-dessous ne concerne alors que les médias non placés) */
+  /** Le projet est-il mis en page en blocs ? (la composition historique ne concerne alors que les médias non placés) */
   hasBlocks(): boolean {
     return Array.isArray(this.data.blocks);
+  }
+
+  blocks(): Block[] {
+    return Array.isArray(this.data.blocks) ? this.data.blocks : [];
+  }
+
+  /**
+   * Remplace la mise en page en blocs. `null` = retour à la composition historique (demande explicite
+   * de l'utilisateur ; la version précédente reste dans .cms/historique/).
+   */
+  setBlocks(blocks: Block[] | null) {
+    (this.data as { blocks?: Block[] | null }).blocks = blocks;
+    this.touch();
   }
 
   /* ------------------------------------------------------------------ couverture */
@@ -189,17 +210,27 @@ export class Editor {
     return { data: { ...this.data, media }, body: this.body };
   }
 
-  flush(): Promise<void> {
+  /**
+   * Enregistre maintenant. `force` : écrase une version modifiée ailleurs (après accord de l'utilisateur ;
+   * l'autre version est gardée dans .cms/historique/).
+   */
+  flush(force = false): Promise<void> {
     clearTimeout(this.timer);
+    clearTimeout(this.retryTimer);
     if (this.saving) return this.pending;
-    if (this.rev === this.savedRev && this.status !== 'error') return Promise.resolve();
+    if (this.status === 'conflict' && !force) return Promise.resolve();
+    if (this.rev === this.savedRev && this.status !== 'error' && !force) return Promise.resolve();
     this.saving = true;
     this.status = 'saving';
     this.emit();
     const rev = this.rev;
     this.pending = (async () => {
       try {
-        const result = await api.save(this.slug, this.payload());
+        const result = await api.save(this.slug, {
+          ...this.payload(),
+          baseUpdatedAt: this.updatedAt,
+          force,
+        });
         this.updatedAt = result.updatedAt;
         this.savedAt = Date.now();
         this.savedRev = rev;
@@ -207,7 +238,13 @@ export class Editor {
         this.status = this.rev === rev ? 'saved' : 'dirty';
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
-        this.status = 'error';
+        if (error instanceof ApiError && error.status === 409) {
+          this.status = 'conflict';
+        } else {
+          this.status = 'error';
+          // nouvel essai automatique (serveur arrêté, réseau…) : rien n'est perdu tant que la page reste ouverte
+          this.retryTimer = window.setTimeout(() => void this.flush(), RETRY_MS);
+        }
       } finally {
         this.saving = false;
         this.emit();
@@ -219,6 +256,7 @@ export class Editor {
 
   dispose() {
     clearTimeout(this.timer);
+    clearTimeout(this.retryTimer);
     this.listeners.clear();
   }
 }

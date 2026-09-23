@@ -6,8 +6,9 @@
  * Toutes les tuiles partagent la même visionneuse (navigation dans toute la galerie).
  * Aucun recadrage : chaque média garde son ratio (voir GalleryItem.astro et src/styles/gallery-grid.css).
  */
-import { type Locale } from '@/i18n';
+import { format, useTranslations, type Locale } from '@/i18n';
 import type { GalleryBlock, GalleryItem as Item } from '@/lib/media';
+import Icon from '@/components/ui/Icon.astro';
 import GalleryItem from './GalleryItem.astro';
 import Lightbox from './Lightbox.astro';
 import '@/styles/gallery-grid.css';
@@ -49,6 +50,22 @@ const blockItemStyle = (item: Item) =>
 const blockStyle = (block: GalleryBlock) =>
   `--cd:${block.columns.desktop};--ct:${block.columns.tablet};--cm:${block.columns.mobile}` +
   (block.align ? `;--block-align:${block.align}` : '');
+
+/** Carrousel : médias visibles par appareil (--pd / --pt / --pm). */
+const carouselStyle = (block: GalleryBlock) => {
+  const pv = block.carousel!.perView;
+  return `--pd:${pv.desktop};--pt:${pv.tablet};--pm:${pv.mobile}`;
+};
+
+/** Largeur d'une diapositive ≈ largeur du bloc ÷ médias visibles. */
+const carouselSizes = (block: GalleryBlock) => {
+  const base = BLOCK_WIDTH[block.width];
+  const pv = block.carousel!.perView;
+  const part = (n: number) => `calc(${base} / ${n})`;
+  return `(min-width: 1024px) ${part(pv.desktop)}, (min-width: 640px) ${part(pv.tablet)}, ${part(pv.mobile)}`;
+};
+
+const t = useTranslations(locale);
 ---
 
 {blocks.length > 0 && (
@@ -85,6 +102,80 @@ const blockStyle = (block: GalleryBlock) =>
                   />
                 ))}
               </div>
+            ) : block.layout === 'carousel' ? (
+              <div
+                class={`gc gb-gap-${block.gap}`}
+                style={carouselStyle(block)}
+                data-carousel
+                data-loop={block.carousel!.loop ? '' : undefined}
+                data-autoplay={block.carousel!.autoplay || undefined}
+              >
+                <div
+                  class="gc-track"
+                  tabindex="0"
+                  role="region"
+                  aria-roledescription={t.carousel.label}
+                  aria-label={block.title ?? t.projects.gallery}
+                >
+                  {block.items.map((item, i) => (
+                    <div
+                      class="gc-slide"
+                      role="group"
+                      aria-roledescription={t.carousel.slide}
+                      aria-label={format(t.lightbox.counter, {
+                        n: i + 1,
+                        total: block.items.length,
+                      })}
+                    >
+                      <GalleryItem
+                        media={item.media}
+                        placement="gc-item"
+                        style=""
+                        sizes={carouselSizes(block)}
+                        eager={eager()}
+                        video={item.video}
+                        locale={locale}
+                      />
+                    </div>
+                  ))}
+                </div>
+                {block.items.length > 1 && (
+                  <div class="gc-controls">
+                    {block.carousel!.controls.includes('arrows') && (
+                      <button
+                        type="button"
+                        class="gc-btn"
+                        data-carousel-prev
+                        aria-label={t.lightbox.previous}
+                      >
+                        <Icon name="arrow-left" class="size-4" />
+                      </button>
+                    )}
+                    {block.carousel!.controls.includes('dots') && (
+                      <div class="gc-dots">
+                        {block.items.map((_, i) => (
+                          <button
+                            type="button"
+                            class="gc-dot"
+                            data-carousel-dot={i}
+                            aria-label={format(t.lightbox.goTo, { n: i + 1 })}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {block.carousel!.controls.includes('arrows') && (
+                      <button
+                        type="button"
+                        class="gc-btn"
+                        data-carousel-next
+                        aria-label={t.lightbox.next}
+                      >
+                        <Icon name="arrow-right" class="size-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             ) : (
               <div class={`gb-grid gb-gap-${block.gap}`} style={blockStyle(block)}>
                 {block.items.map((item) => (
@@ -94,6 +185,7 @@ const blockStyle = (block: GalleryBlock) =>
                     style={blockItemStyle(item)}
                     sizes={blockSizes(block, item)}
                     eager={eager()}
+                    video={item.video}
                     locale={locale}
                   />
                 ))}

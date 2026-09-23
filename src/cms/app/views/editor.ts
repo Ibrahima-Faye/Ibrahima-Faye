@@ -3,7 +3,7 @@ import { api } from '../api';
 import { Editor, type SaveStatus } from '../editor-state';
 import type { Meta, Route, View } from '../types';
 import { confirmModal, formatDate, h, icon, toast } from '../ui';
-import { mountGallery } from './editor-gallery';
+import { mountComposer } from './editor-composer';
 import { mountInfo } from './editor-info';
 import { mountPreview } from './editor-preview';
 
@@ -19,7 +19,8 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
   saved: 'Enregistré',
   dirty: 'Modifications en attente…',
   saving: 'Enregistrement…',
-  error: 'Échec de l’enregistrement',
+  error: 'Échec — nouvel essai automatique…',
+  conflict: 'Modifié ailleurs — action requise',
 };
 
 export async function mountEditor(
@@ -109,7 +110,9 @@ export async function mountEditor(
       h('i'),
       s === 'saved' ? `Enregistré · ${formatDate(editor.savedAt)}` : STATUS_TEXT[s],
     );
-    if (s === 'error') statusEl.title = editor.error;
+    statusEl.title =
+      s === 'error' || s === 'conflict' ? editor.error : 'Enregistrer maintenant (Ctrl + S)';
+    if (s === 'conflict') void resolveConflict();
 
     tabsNav.replaceChildren(
       ...TABS.map((t) =>
@@ -158,7 +161,7 @@ export async function mountEditor(
       next === 'infos'
         ? mountInfo(panel, editor, meta)
         : next === 'galerie'
-          ? mountGallery(panel, editor)
+          ? mountComposer(panel, editor)
           : mountPreview(panel, editor);
     renderHeader();
   }
@@ -195,6 +198,38 @@ export async function mountEditor(
     }
   }
 
+  /** Le fichier a changé ailleurs : l'utilisateur choisit ; rien n'est écrasé sans son accord. */
+  let conflictOpen = false;
+  async function resolveConflict() {
+    if (conflictOpen) return;
+    conflictOpen = true;
+    const overwrite = await confirmModal({
+      title: 'Ce projet a été modifié ailleurs',
+      body: h(
+        'div',
+        null,
+        h(
+          'p',
+          null,
+          'Depuis son ouverture ici, project.md a changé (autre onglet de l’administration, ou fichier édité à la main).',
+        ),
+        h(
+          'p',
+          { class: 'cms-muted' },
+          '« Garder mes modifications » enregistre ta version ; l’autre version est conservée dans .cms/historique/ (récupérable). « Recharger » affiche la version du disque et abandonne tes modifications non enregistrées.',
+        ),
+      ),
+      confirm: 'Garder mes modifications',
+      cancel: 'Recharger le projet',
+    });
+    conflictOpen = false;
+    if (overwrite) void editor.flush(true);
+    else {
+      editor.dispose();
+      location.reload();
+    }
+  }
+
   const unsubscribe = editor.onChange(renderHeader);
   const onKey = (e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -203,7 +238,7 @@ export async function mountEditor(
     }
   };
   const onBeforeUnload = (e: BeforeUnloadEvent) => {
-    if (editor.status === 'dirty' || editor.status === 'saving') {
+    if (editor.status !== 'saved') {
       e.preventDefault();
       e.returnValue = '';
     }

@@ -8,7 +8,15 @@
  *  - les blocs (ids, types inconnus, champs inconnus) sont conservés et jamais retirés implicitement.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
@@ -96,6 +104,35 @@ describe('une modification ne change que ce qui est modifié', () => {
     expect(history(slug)).toHaveLength(1);
     const kept = readFileSync(path.join(root, '.cms/historique', slug, history(slug)[0]!), 'utf8');
     expect(kept).toBe(before);
+  });
+
+  it('historique : une copie avant la 1re modification, pas une par enregistrement automatique', async () => {
+    const slug = 'impression-3d';
+    const original = read(slug);
+    for (const title of ['Essai 1', 'Essai 2', 'Essai 3']) {
+      const detail = await store.getProject(slug);
+      await store.saveProject(slug, { data: { ...detail.data, title }, body: detail.body });
+    }
+    expect(history(slug)).toHaveLength(1);
+    const kept = readFileSync(path.join(root, '.cms/historique', slug, history(slug)[0]!), 'utf8');
+    expect(kept).toBe(original); // l'état d'avant la séance
+  });
+
+  it('écraser une version modifiée ailleurs (force) : elle est TOUJOURS copiée dans l’historique', async () => {
+    const slug = 'impression-3d';
+    const external = read(slug).replace(/^title: .*$/m, 'title: Modifié à la main');
+    expect(external).toContain('title: Modifié à la main');
+    writeFileSync(mdPath(slug), external);
+    const detail = await store.getProject(slug);
+    await store.saveProject(slug, {
+      data: { ...detail.data, title: 'Ma version' },
+      body: detail.body,
+      force: true,
+    });
+    const copies = history(slug).map((f) =>
+      readFileSync(path.join(root, '.cms/historique', slug, f), 'utf8'),
+    );
+    expect(copies.some((c) => c.includes('Modifié à la main'))).toBe(true);
   });
 
   it('fiche gérée par l’admin (wonderpark) : seul le titre change', async () => {

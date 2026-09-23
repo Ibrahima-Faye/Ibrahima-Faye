@@ -15,16 +15,7 @@
  *  - les blocs ne sont jamais retirés implicitement ; les champs inconnus sont conservés.
  */
 import { createWriteStream, existsSync } from 'node:fs';
-import {
-  copyFile,
-  mkdir,
-  readdir,
-  readFile,
-  rename,
-  stat,
-  unlink,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { createHash, randomBytes } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { pipeline } from 'node:stream/promises';
@@ -34,6 +25,7 @@ import sharp from 'sharp';
 import { HttpError } from './http.mjs';
 
 const MAX_UPLOAD = 2 * 1024 * 1024 * 1024; // 2 Go
+const HISTORY_EVERY_MS = 2 * 60 * 1000; // au plus une copie d'historique toutes les 2 min par projet
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const natural = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
 
@@ -492,22 +484,52 @@ export function createStore(root, { load }) {
   }
 
   /** Copie la version actuelle de project.md dans .cms/historique/<slug>/ avant de la remplacer. */
-  async function keepHistory(slug, file) {
+  /**
+   * L'enregistrement automatique écrit souvent (une fois par geste) : on garde une copie avant la première
+   * modification, puis au plus une toutes les HISTORY_EVERY_MS pendant une séance d'édition.
+   * L'état d'avant chaque séance reste donc toujours récupérable, sans accumuler des centaines de fichiers.
+   * `always` : copie systématique (ex. écraser une version modifiée ailleurs : elle doit rester récupérable).
+   */
+  async function keepHistory(slug, file, always = false) {
     const dir = path.join(historyDir, slug);
     await mkdir(dir, { recursive: true });
-    await copyFile(file, path.join(dir, `${stamp()}.md`));
+    const latest = (await readdir(dir))
+      .filter((n) => n.endsWith('.md'))
+      .sort()
+      .at(-1);
+    if (
+      !always &&
+      latest &&
+      Date.now() - (await stat(path.join(dir, latest))).mtimeMs < HISTORY_EVERY_MS
+    )
+      return;
+    // lecture + écriture (et non copyFile, qui garde la date du fichier d'origine sous Windows)
+    await writeFile(path.join(dir, `${stamp()}.md`), await readFile(file));
   }
 
   async function saveProject(slug, input) {
     const { file, text, data: existing, body: existingBody } = await readProject(slug);
     const data = cleanData(input.data ?? {}, existing);
     const body = typeof input.body === 'string' ? input.body : existingBody;
+    const current = Math.round((await stat(file)).mtimeMs);
 
     // Rien n'a changé : on n'écrit pas (le fichier reste identique à l'octet près).
     if (sameValue(data, existing) && body.trim() === existingBody.trim()) {
-      return { slug, updatedAt: Math.round((await stat(file)).mtimeMs), unchanged: true };
+      return { slug, updatedAt: current, unchanged: true };
     }
-    await keepHistory(slug, file);
+    // Le fichier a été modifié depuis son ouverture (autre onglet, édition à la main) : on ne l'écrase pas
+    // sans l'accord explicite de l'utilisateur (`force`). Même forcé, l'autre version est gardée dans l'historique.
+    if (
+      typeof input.baseUpdatedAt === 'number' &&
+      input.baseUpdatedAt !== current &&
+      input.force !== true
+    ) {
+      throw new HttpError(
+        409,
+        'Ce projet a été modifié ailleurs (autre onglet ou fichier édité à la main) depuis son ouverture.',
+      );
+    }
+    await keepHistory(slug, file, input.force === true);
     await writeFile(file, serializeProject(data, body, text), 'utf8');
     return { slug, updatedAt: Math.round((await stat(file)).mtimeMs) };
   }

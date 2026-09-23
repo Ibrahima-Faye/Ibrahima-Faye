@@ -134,3 +134,119 @@
     --s: var(--sd, 1);
   }
 }
+
+/* ==========================================================================
+   Carrousel (bloc `carousel`) — défilement natif (scroll-snap) : fluide au doigt, au pavé tactile et au clavier.
+   Médias visibles par appareil : --pm (mobile), --pt (tablette), --pd (≥ 1024 px). Décimales : on devine la suivante.
+   Chaque diapositive garde le ratio de son média (.gg-tile) : les médias verticaux sont centrés, jamais recadrés.
+   ========================================================================== */
+.gc {
+  --pv: var(--pm, 1);
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .gc {
+    --pv: var(--pt, 1);
+  }
+}
+
+@media (min-width: 1024px) {
+  .gc {
+    --pv: var(--pd, 1);
+  }
+}
+
+.gc-track {
+  display: flex;
+  align-items: center;
+  gap: var(--gap, clamp(0.5rem, 1.4vw, 1rem));
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  border-radius: 0.4rem;
+}
+
+.gc-track::-webkit-scrollbar {
+  display: none;
+}
+
+.gc-track:focus-visible {
+  outline: 2px solid var(--color-mauve-300);
+  outline-offset: 4px;
+}
+
+/* Glisser à la souris : pas d'aimantation pendant le geste. */
+.gc-track.is-dragging {
+  scroll-snap-type: none;
+  cursor: grabbing;
+}
+
+.gc-slide {
+  flex: 0 0 calc((100% - var(--gap, clamp(0.5rem, 1.4vw, 1rem)) * (var(--pv) - 1)) / var(--pv));
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.gc-item .gg-tile {
+  /* dans un carrousel, un média très haut reste lisible : plafonné à 80 % de l'écran, centré */
+  width: min(100%, calc(80svh * var(--r, 1.5)));
+}
+
+.gc-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.gc-btn {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 999px;
+  border: 1px solid rgb(200 169 255 / 0.3);
+  background: rgb(11 18 51 / 0.45);
+  color: var(--color-paper);
+  transition:
+    border-color 0.3s,
+    background-color 0.3s,
+    opacity 0.3s;
+}
+
+.gc-btn:hover:not(:disabled) {
+  border-color: var(--color-mauve-300);
+  background: rgb(123 77 255 / 0.18);
+}
+
+.gc-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.gc-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.gc-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(200 169 255 / 0.3);
+  transition:
+    background-color 0.3s,
+    width 0.4s var(--ease-out-expo);
+}
+
+.gc-dot[aria-current='true'] {
+  width: 1.4rem;
+  background: var(--color-mauve-300);
+}

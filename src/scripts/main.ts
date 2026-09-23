@@ -10,6 +10,7 @@ import { initHeader } from './header';
 import { initNavigation } from './navigation';
 import { initFilters } from './filters';
 import { initLightbox, initGalleryVideos } from './lightbox';
+import { initCarousels } from './carousel';
 import { initContactForm } from './contact-form';
 import { initExpertises } from './expertises';
 import { mountHeroField } from './hero-field';
@@ -37,6 +38,7 @@ function init() {
   cleanups.push(initFilters());
   cleanups.push(initContactForm());
   cleanups.push(initGalleryVideos());
+  cleanups.push(initCarousels());
   cleanups.push(initExpertises());
 
   const canvas = document.querySelector<HTMLCanvasElement>('[data-hero-canvas]');

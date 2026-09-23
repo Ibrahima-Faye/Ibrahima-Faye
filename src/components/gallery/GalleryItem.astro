@@ -17,11 +17,15 @@ interface Props {
   /** Attribut `sizes` de l'image (largeur affichée selon l'écran). */
   sizes: string;
   eager?: boolean;
+  /** Comportement d'une vidéo à cet emplacement (blocs). */
+  video?: { autoplay?: boolean; loop?: boolean; muted?: boolean; controls?: boolean };
   locale?: Locale;
 }
 
-const { media: m, placement, style, sizes, eager = false, locale = 'fr' } = Astro.props;
+const { media: m, placement, style, sizes, eager = false, video, locale = 'fr' } = Astro.props;
 const t = useTranslations(locale);
+/** Lecture automatique : muette, en boucle (sauf avis contraire), et seulement quand la vidéo est visible. */
+const autoplay = m.type === 'video' && video?.autoplay === true;
 ---
 
 <figure
@@ -62,15 +66,19 @@ const t = useTranslations(locale);
           poster={m.poster?.url}
           muted
           playsinline
+          loop={autoplay && video?.loop !== false}
           preload={m.poster ? 'none' : 'metadata'}
           data-gallery-video
+          data-autoplay={autoplay ? '' : undefined}
           data-ratio-known={String(m.ratioKnown)}
           tabindex="-1"
           aria-hidden="true"
         />
-        <span class="play" aria-hidden="true">
-          <Icon name="play" class="size-6" />
-        </span>
+        {!autoplay && (
+          <span class="play" aria-hidden="true">
+            <Icon name="play" class="size-6" />
+          </span>
+        )}
       </>
     )}
     <span class="hint" aria-hidden="true">

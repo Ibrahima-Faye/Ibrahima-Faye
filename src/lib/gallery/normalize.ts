@@ -39,10 +39,24 @@ export interface NormalizedItem {
   video?: BlockItem['video'];
 }
 
+export interface CarouselSettings {
+  /** Médias visibles à la fois, par appareil (décimales : on devine la suivante). */
+  perView: Record<Device, number>;
+  loop: boolean;
+  /** Secondes entre deux diapositives ; 0 = pas de défilement automatique. */
+  autoplay: number;
+  controls: ('arrows' | 'dots' | 'thumbs')[];
+}
+
 export interface NormalizedBlock {
   id: string;
-  /** `legacy` : grille historique de 12 colonnes (rendu identique à l'ancien) · `grid` : grille par appareil. */
-  layout: 'legacy' | 'grid';
+  /**
+   * `legacy` : grille historique de 12 colonnes (rendu identique à l'ancien) · `grid` : grille par appareil ·
+   * `carousel` : carrousel (défilement horizontal).
+   */
+  layout: 'legacy' | 'grid' | 'carousel';
+  /** Réglages du carrousel (layout `carousel`). */
+  carousel?: CarouselSettings;
   /** Type déclaré : single, grid, carousel, compare, un type inconnu, ou `legacy` / `unplaced`. */
   type: string;
   title?: string;
@@ -87,12 +101,18 @@ export function resolveSpan(value: PerDevice<number> | undefined, columns: Colum
   };
 }
 
-const PROVISIONAL: Record<string, string> = {
-  carousel:
-    'Carrousel : affiché en grille pour l’instant (le carrousel interactif viendra avec l’éditeur de blocs).',
-  compare:
-    'Avant / après : affiché en grille pour l’instant (le curseur viendra avec l’éditeur de blocs).',
-};
+/** Médias visibles d'un carrousel : 1 par défaut, entre 1 et 6. */
+export function resolvePerView(value: PerDevice<number> | undefined): Record<Device, number> {
+  const o = typeof value === 'number' ? { desktop: value } : (value ?? {});
+  const bound = (n: number) => Math.min(6, Math.max(1, Math.round(n * 100) / 100));
+  const desktop = bound(o.desktop ?? 1);
+  const tablet = bound(o.tablet ?? Math.min(desktop, 2));
+  const mobile = bound(o.mobile ?? 1);
+  return { desktop, tablet, mobile };
+}
+
+const COMPARE_NOTICE =
+  'Avant / après : affiché en grille pour l’instant (le curseur interactif viendra plus tard).';
 
 function legacyBlock(
   id: string,
@@ -152,6 +172,8 @@ export function normalizeGallery(input: GalleryInput): {
 
     let notice: string | undefined;
     let columns: Columns;
+    let layout: NormalizedBlock['layout'] = 'grid';
+    let carousel: CarouselSettings | undefined;
     const n = items.length;
     const imagesOnly = items.every((i) => kinds.get(i.file) === 'image');
 
@@ -167,12 +189,20 @@ export function normalizeGallery(input: GalleryInput): {
     } else if (block.type === 'grid') {
       columns = resolveColumns(block.columns);
     } else if (block.type === 'carousel') {
-      notice = PROVISIONAL.carousel;
-      columns = resolveColumns({ desktop: Math.min(n, 3), tablet: Math.min(n, 2), mobile: 1 });
+      layout = 'carousel';
+      columns = { desktop: 1, tablet: 1, mobile: 1 };
+      carousel = {
+        perView: resolvePerView(block.perView),
+        loop: block.loop ?? false,
+        autoplay: block.autoplay ?? 0,
+        controls: block.controls ?? ['arrows', 'dots'],
+      };
+      if (n < 2)
+        notice = 'Carrousel avec un seul média : ajoute-en d’autres pour le faire défiler.';
     } else {
       notice =
         n === 2 && imagesOnly
-          ? PROVISIONAL.compare
+          ? COMPARE_NOTICE
           : 'Avant / après : il faut exactement 2 images — affiché comme une grille, rien n’est perdu.';
       columns = resolveColumns({ desktop: Math.min(n, 2), tablet: Math.min(n, 2), mobile: 1 });
     }
@@ -192,7 +222,8 @@ export function normalizeGallery(input: GalleryInput): {
     } = block;
     blocks.push({
       id,
-      layout: 'grid',
+      layout,
+      carousel,
       type,
       title,
       caption,

@@ -261,6 +261,10 @@ const fr = {
     goTo: 'Aller au média {n}',
     hint: 'Molette ou double-clic pour zoomer · ← → pour naviguer',
   },
+  carousel: {
+    label: 'carrousel',
+    slide: 'diapositive',
+  },
 
   notFound: {
     title: 'Cette page n’existe pas.',
