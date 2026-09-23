@@ -3,6 +3,9 @@ import { Picture } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import { useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
+import { settings } from '@/lib/settings';
+import { inlineMarkdown, markdownBlocks, safeHref } from '@/lib/studio/content';
+import Button from '@/components/ui/Button.astro';
 import SectionHeading from '@/components/ui/SectionHeading.astro';
 import type { SectionProps } from '@/lib/studio/layout';
 
@@ -22,6 +25,8 @@ const portraits = import.meta.glob<ImageMetadata>('/src/assets/portrait.{jpg,jpe
 });
 const portrait = Object.values(portraits)[0];
 const ratio = portrait ? portrait.width / portrait.height : 4 / 5;
+// Contenu du site → À propos : blocs supplémentaires (titre, texte, liste, citation, image, bouton)
+const blocks = settings.content.about?.blocks ?? [];
 ---
 
 <section
@@ -105,11 +110,81 @@ const ratio = portrait ? portrait.width / portrait.height : 4 / 5;
                 i === 0 ? 'text-lavender-100 text-xl md:text-2xl' : 'text-paper-muted text-lg',
               ]}
               data-reveal
-            >
-              {paragraph}
-            </p>
+              set:html={inlineMarkdown(paragraph)}
+            />
           ))}
         </div>
+
+        {blocks.length > 0 && (
+          <div class="mt-10 space-y-6" data-anim="about.blocks">
+            {blocks.map((block) => {
+              if (block.type === 'heading' && block.text)
+                return (
+                  <h3 class="font-display text-2xl font-bold tracking-tight uppercase" data-reveal>
+                    {block.text}
+                  </h3>
+                );
+              if (block.type === 'text' && block.text)
+                return (
+                  <div
+                    class="text-paper-muted max-w-xl space-y-4 text-lg leading-[1.75]"
+                    data-reveal
+                  >
+                    {markdownBlocks(block.text).map((b) =>
+                      b.type === 'ul' ? (
+                        <ul class="list-disc space-y-1 pl-5">
+                          {b.html.map((li) => (
+                            <li set:html={li} />
+                          ))}
+                        </ul>
+                      ) : (
+                        <p set:html={b.html[0]} />
+                      ),
+                    )}
+                  </div>
+                );
+              if (block.type === 'list' && block.items?.length)
+                return (
+                  <ul class="border-t border-white/10" data-reveal>
+                    {block.items.map((item) => (
+                      <li
+                        class="text-paper-muted border-b border-white/10 py-3"
+                        set:html={inlineMarkdown(item)}
+                      />
+                    ))}
+                  </ul>
+                );
+              if (block.type === 'quote' && block.text)
+                return (
+                  <blockquote
+                    class="border-electric-500 text-lavender-200 max-w-xl border-l-2 pl-5 text-xl italic"
+                    data-reveal
+                    set:html={inlineMarkdown(block.text)}
+                  />
+                );
+              if (block.type === 'image' && block.src)
+                return (
+                  <img
+                    src={block.src}
+                    alt={block.alt ?? ''}
+                    loading="lazy"
+                    class="w-full max-w-xl rounded-[var(--radius-media,0.5rem)]"
+                    data-reveal
+                  />
+                );
+              const href = safeHref(block.href);
+              if (block.type === 'button' && block.label && href)
+                return (
+                  <div data-reveal>
+                    <Button href={href} variant="ghost">
+                      {block.label}
+                    </Button>
+                  </div>
+                );
+              return null;
+            })}
+          </div>
+        )}
 
         <!-- Démarche : concevoir → visualiser → fabriquer → automatiser -->
         <div class="mt-16" data-reveal>

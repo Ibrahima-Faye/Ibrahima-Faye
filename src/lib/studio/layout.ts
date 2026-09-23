@@ -245,8 +245,10 @@ export interface NavLink {
   id: string;
   /** Texte affiché (sinon celui du dictionnaire). */
   label?: string;
-  /** Section cible (clé), ou 'page:/projets/' pour une page. */
+  /** Section cible (clé), 'page:/projets/' pour une page, ou 'url:https://…' pour une adresse. */
   target: string;
+  /** Texte du menu mobile (sinon le même). */
+  mobileLabel?: string;
   visible?: boolean;
   /** Affiché comme un bouton (comme « Contact »). */
   button?: boolean;

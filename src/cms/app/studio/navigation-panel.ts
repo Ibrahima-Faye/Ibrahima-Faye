@@ -44,6 +44,7 @@ export function renderNavigationPanel(
             l.id === d0.id &&
             l.target === d0.target &&
             !l.label &&
+            !l.mobileLabel &&
             l.visible !== false &&
             Boolean(l.button) === Boolean(d0.button)
           );
@@ -66,12 +67,14 @@ export function renderNavigationPanel(
       label: `Section ${s.label}`,
     })),
     { value: 'page:/projets/', label: 'Page Projets' },
+    { value: 'url:', label: 'Adresse (URL)…' },
   ];
 
   function draw() {
     const list = links();
     const update = (i: number, patch: Partial<NavLink>) => {
-      const next = list.map((l, j) => (j === i ? { ...l, ...patch } : l));
+      // liste relue à chaque fois : plusieurs champs d'un même lien peuvent changer sans redessin
+      const next = links().map((l, j) => (j === i ? { ...l, ...patch } : l));
       writeLinks(next);
     };
     const move = (i: number, delta: number) => {
@@ -147,10 +150,23 @@ export function renderNavigationPanel(
         h(
           'div',
           { class: 'st-link-bottom' },
-          selectControl<string>(l.target, targetOptions, (v) =>
-            update(i, { target: v ?? l.target }),
+          selectControl<string>(
+            l.target.startsWith('url:') ? 'url:' : l.target,
+            targetOptions,
+            (v) => {
+              update(i, { target: v ?? l.target });
+              if (v === 'url:' || l.target.startsWith('url:')) draw();
+            },
           ),
           toggleControl(Boolean(l.button), (v) => update(i, { button: v || undefined }), 'Bouton'),
+        ),
+        l.target.startsWith('url:')
+          ? textControl(l.target.slice(4) || undefined, 'https://… ou /page/ ou #ancre', (v) =>
+              update(i, { target: `url:${v?.trim() ?? ''}` }),
+            )
+          : null,
+        textControl(l.mobileLabel, 'Texte du menu mobile (sinon le même)', (v) =>
+          update(i, { mobileLabel: v }),
         ),
       );
     });

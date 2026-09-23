@@ -1,5 +1,9 @@
 ---
 import { entityDomains } from '@/data/entities';
+import { isDomainSlug } from '@/data/domains';
+import { settings } from '@/lib/settings';
+import { entityItems, inlineMarkdown, safeHref } from '@/lib/studio/content';
+import DomainIcon from '@/components/ui/DomainIcon.astro';
 import { format, localizedPath, useTranslations, type Locale } from '@/i18n';
 import type { EntitySlug } from '@/data/entities';
 import Icon from '@/components/ui/Icon.astro';
@@ -19,13 +23,31 @@ const { locale, counts, section } = Astro.props;
 const t = useTranslations(locale);
 const projectsPath = localizedPath('/projets/', locale);
 
-const entities = (['clicgraph', 'jeefsys'] as const).map((slug, i) => ({
-  slug,
-  index: String(i + 1).padStart(2, '0'),
-  ...t.entities[slug],
-  domains: entityDomains[slug].map((d) => t.domains[d].title),
-  count: counts.get(slug) ?? 0,
-}));
+/*
+  Contenu du site → Écosystème : entités éditables (ClicGraph, JeeFSYS, et celles ajoutées).
+  Les textes de ClicGraph / JeeFSYS restent ceux du dictionnaire (partagés avec les cartes, filtres…).
+*/
+const entities = entityItems(settings.content).map((item, i) => {
+  const builtin = item.builtin ? (item.id as 'clicgraph' | 'jeefsys') : null;
+  const copy = builtin
+    ? t.entities[builtin]
+    : { name: item.name ?? '', role: item.role ?? '', description: item.description ?? '' };
+  const domainList = item.domains ?? (builtin ? entityDomains[builtin] : []);
+  const count = builtin ? (counts.get(builtin) ?? 0) : 0;
+  const href =
+    safeHref(item.href) ?? (builtin && count > 0 ? `${projectsPath}?entite=${builtin}` : undefined);
+  return {
+    slug: item.id,
+    index: String(i + 1).padStart(2, '0'),
+    ...copy,
+    domains: domainList.filter(isDomainSlug).map((d) => t.domains[d].title),
+    href: item.button === false ? undefined : href,
+    buttonLabel: item.buttonLabel?.trim() || format(t.ecosystem.seeProjects, { name: copy.name }),
+    logo: item.logo,
+    icon: item.icon && isDomainSlug(item.icon) ? item.icon : undefined,
+    rich: !builtin,
+  };
+});
 ---
 
 <section
@@ -62,8 +84,14 @@ const entities = (['clicgraph', 'jeefsys'] as const).map((slug, i) => ({
         <span class="eyebrow mt-3 !text-[0.66rem]">{site.name}</span>
       </div>
 
-      <!-- Traits de liaison (desktop) -->
-      <div class="pointer-events-none relative hidden h-24 lg:block" aria-hidden="true">
+      <!-- Traits de liaison (desktop) : dessinés pour deux entités -->
+      <div
+        class:list={[
+          'pointer-events-none relative hidden h-24',
+          entities.length === 2 && 'lg:block',
+        ]}
+        aria-hidden="true"
+      >
         <span class="bg-mauve-400/50 absolute top-0 left-1/2 h-1/2 w-px" data-line="stem"></span>
         <span
           class="bg-mauve-400/50 absolute top-1/2 left-1/4 h-px w-1/2"
@@ -103,26 +131,45 @@ const entities = (['clicgraph', 'jeefsys'] as const).map((slug, i) => ({
               <span>{e.index}</span>
               <span>{e.role}</span>
             </p>
+            {(e.logo || e.icon) && (
+              <div class="mt-8 flex items-center gap-4">
+                {e.logo && (
+                  <img src={e.logo} alt="" class="h-12 w-auto max-w-[10rem] object-contain" />
+                )}
+                {e.icon && <DomainIcon slug={e.icon} class="text-mauve-300 size-10" />}
+              </div>
+            )}
             <h3 class="font-display mt-10 text-[clamp(1.6rem,7vw,3.6rem)] leading-none font-extrabold tracking-[-0.04em] lg:text-[clamp(1.6rem,3.5vw,3.6rem)]">
               {e.name}
             </h3>
-            <p class="text-paper-muted mt-6 max-w-md leading-relaxed">{e.description}</p>
+            {e.rich ? (
+              <p
+                class="text-paper-muted mt-6 max-w-md leading-relaxed"
+                set:html={inlineMarkdown(e.description)}
+              />
+            ) : (
+              <p class="text-paper-muted mt-6 max-w-md leading-relaxed">{e.description}</p>
+            )}
 
-            <p class="eyebrow text-paper-faint mt-10 mb-4 !text-[0.66rem]">
-              {t.ecosystem.domainsLabel}
-            </p>
-            <ul class="flex flex-wrap gap-2">
-              {e.domains.map((d) => (
-                <li class="chip">{d}</li>
-              ))}
-            </ul>
+            {e.domains.length > 0 && (
+              <>
+                <p class="eyebrow text-paper-faint mt-10 mb-4 !text-[0.66rem]">
+                  {t.ecosystem.domainsLabel}
+                </p>
+                <ul class="flex flex-wrap gap-2">
+                  {e.domains.map((d) => (
+                    <li class="chip">{d}</li>
+                  ))}
+                </ul>
+              </>
+            )}
 
-            {e.count > 0 && (
+            {e.href && (
               <a
-                href={`${projectsPath}?entite=${e.slug}`}
+                href={e.href}
                 class="link-line text-lavender-100 mt-10 inline-flex items-center gap-2 text-sm font-semibold"
               >
-                {format(t.ecosystem.seeProjects, { name: e.name })}
+                {e.buttonLabel}
                 <Icon name="arrow-right" class="size-4" />
               </a>
             )}

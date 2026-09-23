@@ -1,5 +1,5 @@
 /**
- * Réglages centralisés du site (Studio de l'administration) : src/settings/{theme,layout,navigation,animations}.json
+ * Réglages centralisés du site (Studio, Contenu du site) : src/settings/{theme,layout,navigation,animations,content}.json
  *
  *  - validés par les MÊMES schémas que le site (src/schemas/settings.ts, chargé par Vite) ;
  *  - un enregistrement sans changement n'écrit rien ;
@@ -16,7 +16,7 @@ import { isDeepStrictEqual } from 'node:util';
 import path from 'node:path';
 import { HttpError } from './http.mjs';
 
-const NAMES = ['theme', 'layout', 'navigation', 'animations'];
+const NAMES = ['theme', 'layout', 'navigation', 'animations', 'content'];
 const HISTORY_EVERY_MS = 2 * 60 * 1000;
 const IDENTITY_TYPES = {
   svg: 'image/svg+xml',
@@ -89,9 +89,10 @@ export function createSettings(root, { load }) {
 
   /**
    * @param {string} name
-   * @param {{ data?: unknown; baseUpdatedAt?: number; force?: boolean }} [input]
+   * @param {{ data?: unknown; baseUpdatedAt?: number; force?: boolean; snapshot?: boolean }} [input]
+   * `snapshot` : copie systématique de la version précédente (enregistrement manuel du Contenu du site).
    */
-  async function save(name, { data, baseUpdatedAt, force = false } = {}) {
+  async function save(name, { data, baseUpdatedAt, force = false, snapshot = false } = {}) {
     assertName(name);
     const { SETTINGS_SCHEMAS } = await load('/src/schemas/settings.ts');
     const parsed = SETTINGS_SCHEMAS[name].safeParse(data ?? {});
@@ -111,13 +112,37 @@ export function createSettings(root, { load }) {
       const modifiedElsewhere = baseUpdatedAt !== undefined && current.updatedAt !== baseUpdatedAt;
       if (modifiedElsewhere && !force)
         throw new HttpError(409, 'Ces réglages ont été modifiés ailleurs depuis leur ouverture.');
-      await keepHistory(name, file, modifiedElsewhere);
+      await keepHistory(name, file, modifiedElsewhere || snapshot);
     }
     await mkdir(dir, { recursive: true });
     const tmp = path.join(dir, `.${name}.${randomBytes(4).toString('hex')}`);
     await writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
     await rename(tmp, file);
     return { name, updatedAt: Math.round((await stat(file)).mtimeMs) };
+  }
+
+  /** Versions précédentes gardées dans l'historique (plus récentes d'abord). */
+  async function history(name) {
+    assertName(name);
+    if (!existsSync(historyDir)) return [];
+    const files = (await readdir(historyDir)).filter(
+      (n) => n.startsWith(`${name}-`) && n.endsWith('.json'),
+    );
+    const out = [];
+    for (const id of files.sort().reverse().slice(0, 40)) {
+      out.push({ id, savedAt: Math.round((await stat(path.join(historyDir, id))).mtimeMs) });
+    }
+    return out;
+  }
+
+  async function readHistory(name, id) {
+    assertName(name);
+    const valid =
+      typeof id === 'string' && id.startsWith(`${name}-`) && /^[a-z]+-[0-9TZ-]+\.json$/.test(id);
+    if (!valid) throw new HttpError(400, 'Version inconnue.');
+    const file = path.join(historyDir, id);
+    if (!existsSync(file)) throw new HttpError(404, 'Version introuvable.');
+    return { id, data: JSON.parse(await readFile(file, 'utf8')) };
   }
 
   /** Image d'identité (logo, favicon…) → public/identite/<nom>. Renvoie son adresse publique. */
@@ -147,5 +172,5 @@ export function createSettings(root, { load }) {
     return { path: `/identite/${target}` };
   }
 
-  return { names: NAMES, read, all, save, saveIdentity };
+  return { names: NAMES, read, all, save, history, readHistory, saveIdentity };
 }

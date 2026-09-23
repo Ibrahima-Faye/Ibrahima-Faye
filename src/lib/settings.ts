@@ -7,6 +7,7 @@ import { SETTINGS_SCHEMAS, type SettingsName } from '@/schemas/settings';
 import type { ThemeSettings } from '@/lib/studio/theme';
 import type { LayoutSettings, NavigationSettings } from '@/lib/studio/layout';
 import type { AnimationsSettings } from '@/lib/studio/animations';
+import type { ContentSettings } from '@/lib/studio/content';
 
 const files = import.meta.glob<unknown>('/src/settings/*.json', { eager: true, import: 'default' });
 
@@ -26,6 +27,7 @@ export interface SiteSettings {
   layout: LayoutSettings;
   navigation: NavigationSettings;
   animations: AnimationsSettings;
+  content: ContentSettings;
 }
 
 export const settings: SiteSettings = {
@@ -33,4 +35,5 @@ export const settings: SiteSettings = {
   layout: read('layout'),
   navigation: read('navigation'),
   animations: read('animations'),
+  content: read('content'),
 };

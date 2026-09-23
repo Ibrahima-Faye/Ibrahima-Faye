@@ -157,15 +157,26 @@ export function renderSectionsPanel(
   function editor(key: string) {
     const def = SECTIONS.find((s) => s.key === key)!;
     const s = own(key);
-    const content = (layout().content ?? {}) as Record<string, string | string[]>;
-    const setContent = (path: string, v: string | string[] | undefined) =>
-      state.change('layout', (d) => {
-        d.content ??= {};
-        const c = d.content as Record<string, unknown>;
+    // textes : Contenu du site (src/settings/content.json → texts), comme l'éditeur de contenu
+    const content = {
+      ...((layout().content ?? {}) as Record<string, string | string[]>),
+      ...((state.get('content').texts ?? {}) as Record<string, string | string[]>),
+    };
+    const setContent = (path: string, v: string | string[] | undefined) => {
+      state.change('content', (d) => {
+        d.texts ??= {};
+        const c = d.texts as Record<string, unknown>;
         if (v === undefined || (Array.isArray(v) && !v.length)) delete c[path];
         else c[path] = v;
-        if (!Object.keys(c).length) delete d.content;
+        if (!Object.keys(c).length) delete d.texts;
       });
+      // ancienne surcharge éventuelle (layout.json) : retirée, pour qu'un seul endroit décide
+      if ((layout().content as Record<string, unknown> | undefined)?.[path] !== undefined)
+        state.change('layout', (d) => {
+          delete (d.content as Record<string, unknown>)[path];
+          if (!Object.keys(d.content as object).length) delete d.content;
+        });
+    };
 
     const fields = def.fields.map((f) => {
       const fallback = options.texts[f.path];

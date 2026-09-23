@@ -4,6 +4,7 @@ import { site } from '@/config/site';
 import Icon from '@/components/ui/Icon.astro';
 import { settings } from '@/lib/settings';
 import { sectionStyle } from '@/lib/studio/layout';
+import { inlineMarkdown, safeHref } from '@/lib/studio/content';
 
 interface Props {
   locale: Locale;
@@ -14,13 +15,21 @@ const t = useTranslations(locale);
 const home = localizedPath('/', locale);
 const year = new Date().getFullYear();
 
-const nav = [
-  { label: t.nav.expertises, href: `${home}#expertises` },
-  { label: t.nav.projects, href: localizedPath('/projets/', locale) },
-  { label: t.nav.ecosystem, href: `${home}#ecosysteme` },
-  { label: t.nav.about, href: `${home}#a-propos` },
-  { label: t.nav.contact, href: `${home}#contact` },
-];
+// Contenu du site → Footer : liens, description, réseaux (sinon : site d'origine)
+const footer = settings.content.footer ?? {};
+const customLinks = (footer.links ?? [])
+  .map((l) => ({ label: l.label?.trim(), href: safeHref(l.href) }))
+  .filter((l): l is { label: string; href: string } => Boolean(l.label && l.href));
+const nav = customLinks.length
+  ? customLinks
+  : [
+      { label: t.nav.expertises, href: `${home}#expertises` },
+      { label: t.nav.projects, href: localizedPath('/projets/', locale) },
+      { label: t.nav.ecosystem, href: `${home}#ecosysteme` },
+      { label: t.nav.about, href: `${home}#a-propos` },
+      { label: t.nav.contact, href: `${home}#contact` },
+    ];
+const socials = footer.socials === false ? [] : site.socials;
 const universe = (['clicgraph', 'jeefsys'] as const).map((slug) => ({ slug, ...t.entities[slug] }));
 // Studio → Sections → Pied de page : fond, effets, grand mot-symbole
 const own = settings.layout.sections?.footer ?? {};
@@ -43,7 +52,27 @@ const look = sectionStyle(own);
     <div class="grid gap-14 md:grid-cols-[1.4fr_1fr_1fr]">
       <div>
         <p class="display-lg max-w-md">{site.name}</p>
-        <p class="text-paper-muted mt-4 max-w-sm">{t.meta.jobTitle}</p>
+        {footer.description?.trim() ? (
+          <p class="text-paper-muted mt-4 max-w-sm" set:html={inlineMarkdown(footer.description)} />
+        ) : (
+          <p class="text-paper-muted mt-4 max-w-sm">{t.meta.jobTitle}</p>
+        )}
+        {socials.length > 0 && (
+          <ul class="mt-6 flex flex-wrap gap-x-5 gap-y-2" aria-label={t.footer.socials}>
+            {socials.map((s) => (
+              <li>
+                <a
+                  href={s.href}
+                  class="link-line text-paper-muted hover:text-paper text-sm"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {s.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div>

@@ -224,6 +224,7 @@ const fr = {
     email: 'E-mail',
     phone: 'Téléphone',
     whatsapp: 'WhatsApp',
+    location: 'Localisation',
     write: 'Écrire',
     form: {
       name: 'Nom',
@@ -243,6 +244,7 @@ const fr = {
     explore: 'Explorer',
     universe: 'Univers',
     backToTop: 'Haut de page',
+    socials: 'Réseaux',
   },
 
   lightbox: {

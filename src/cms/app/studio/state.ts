@@ -10,6 +10,8 @@ export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'error';
 
 interface Doc {
   data: Record<string, unknown>;
+  /** Dernière version enregistrée (pour « Annuler les modifications »). */
+  saved: string;
   updatedAt: number;
   dirty: boolean;
   timer: number;
@@ -24,6 +26,7 @@ const DELAY: Record<SettingsName, number> = {
   animations: 900,
   layout: 600,
   navigation: 600,
+  content: 600,
 };
 
 export class StudioState {
@@ -32,15 +35,25 @@ export class StudioState {
   private statusListeners = new Set<(status: SaveStatus) => void>();
   private saving = 0;
   private failed = false;
+  /** false : pas d'enregistrement automatique (Contenu du site : bouton « Enregistrer »). */
+  private readonly autosave: boolean;
+  /** Copie systématique de la version précédente à chaque enregistrement (historique). */
+  private readonly snapshot: boolean;
   /** Appelé juste avant d'écrire un fichier (l'aperçu peut ainsi éviter de se recharger). */
   beforeSave?: (name: SettingsName) => void;
   /** Appelé après l'écriture effective d'un fichier. */
   afterSave?: (name: SettingsName) => void;
 
-  private constructor(files: Record<SettingsName, SettingsFile>) {
-    const doc = (f: SettingsFile): Doc => ({
-      data: structuredClone(f.data ?? {}),
-      updatedAt: f.updatedAt,
+  private constructor(
+    files: Record<SettingsName, SettingsFile>,
+    options: { autosave?: boolean; snapshot?: boolean } = {},
+  ) {
+    this.autosave = options.autosave !== false;
+    this.snapshot = options.snapshot === true;
+    const doc = (f: SettingsFile | undefined): Doc => ({
+      data: structuredClone(f?.data ?? { version: 1 }),
+      saved: JSON.stringify(f?.data ?? { version: 1 }),
+      updatedAt: f?.updatedAt ?? 0,
       dirty: false,
       timer: 0,
       undo: [],
@@ -52,11 +65,30 @@ export class StudioState {
       layout: doc(files.layout),
       navigation: doc(files.navigation),
       animations: doc(files.animations),
+      content: doc(files.content),
     };
   }
 
-  static async load() {
-    return new StudioState(await api.settings());
+  static async load(options: { autosave?: boolean; snapshot?: boolean } = {}) {
+    return new StudioState(await api.settings(), options);
+  }
+
+  isDirty(name?: SettingsName) {
+    return name ? this.docs[name].dirty : Object.values(this.docs).some((d) => d.dirty);
+  }
+
+  /** Abandonne les modifications non enregistrées (retour à la dernière version enregistrée). */
+  revert(name?: SettingsName) {
+    for (const n of name ? [name] : (Object.keys(this.docs) as SettingsName[])) {
+      const doc = this.docs[n];
+      if (!doc.dirty) continue;
+      clearTimeout(doc.timer);
+      doc.undo.push(JSON.stringify(doc.data));
+      doc.data = JSON.parse(doc.saved);
+      doc.dirty = false;
+      this.listeners.forEach((fn) => fn(n));
+    }
+    this.emitStatus();
   }
 
   get<T = Record<string, unknown>>(name: SettingsName): T {
@@ -136,7 +168,7 @@ export class StudioState {
     this.listeners.forEach((fn) => fn(name));
     this.emitStatus();
     clearTimeout(doc.timer);
-    doc.timer = window.setTimeout(() => void this.save(name), DELAY[name]);
+    if (this.autosave) doc.timer = window.setTimeout(() => void this.save(name), DELAY[name]);
   }
 
   async flush() {
@@ -163,8 +195,10 @@ export class StudioState {
         data: JSON.parse(snapshot),
         baseUpdatedAt: doc.updatedAt,
         force,
+        snapshot: this.snapshot,
       });
       doc.updatedAt = result.updatedAt;
+      doc.saved = snapshot;
       if (JSON.stringify(doc.data) === snapshot) doc.dirty = false; // sinon : nouvelle modification entre-temps
       this.failed = false;
       if (!result.unchanged) this.afterSave?.(name);
@@ -181,7 +215,7 @@ export class StudioState {
         this.failed = true;
         toast(error instanceof Error ? error.message : 'Enregistrement impossible.', 'error', 6000);
         clearTimeout(doc.timer);
-        doc.timer = window.setTimeout(() => void this.save(name), 5000); // nouvel essai automatique
+        if (this.autosave) doc.timer = window.setTimeout(() => void this.save(name), 5000); // nouvel essai automatique
       }
     } finally {
       this.saving--;

@@ -64,12 +64,20 @@ export const api = {
   settings: () => request<Record<SettingsFile['name'], SettingsFile>>('GET', '/api/settings'),
   saveSettings: (
     name: SettingsFile['name'],
-    payload: { data: unknown; baseUpdatedAt?: number; force?: boolean },
+    payload: { data: unknown; baseUpdatedAt?: number; force?: boolean; snapshot?: boolean },
   ) =>
     request<{ name: string; updatedAt: number; unchanged?: boolean }>(
       'PUT',
       `/api/settings/${name}`,
       payload,
+    ),
+  /** Versions précédentes d'un fichier de réglages (historique). */
+  settingsHistory: (name: SettingsFile['name']) =>
+    request<{ id: string; savedAt: number }[]>('GET', `/api/settings/${name}/history`),
+  settingsVersion: (name: SettingsFile['name'], id: string) =>
+    request<{ id: string; data: Record<string, unknown> }>(
+      'GET',
+      `/api/settings/${name}/history/${encodeURIComponent(id)}`,
     ),
   /** Image d'identité (logo, favicon) → public/identite/. */
   uploadIdentity: async (file: File) => {

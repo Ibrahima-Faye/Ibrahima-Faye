@@ -89,6 +89,18 @@ La **vraie page publique** du projet, affichée dans un cadre « ordinateur », 
 vraies règles responsives). Les modifications sont enregistrées juste avant l'affichage. « Actualiser » recharge,
 « Ouvrir dans un onglet » l'ouvre en grand.
 
+## Contenu du site
+
+Menu **Contenu du site** : tous les textes et contenus du portfolio (Accueil, Expertises, Projets, Écosystème,
+À propos, Contact, Footer, Navigation), avec aperçu. Enregistrement manuel (**Enregistrer** / Ctrl+S), **Annuler**,
+**Versions précédentes** (chaque enregistrement garde la version d'avant dans `.cms/historique/reglages/`).
+
+- Données : `src/settings/content.json` (modèle : `src/lib/studio/content.ts`). Vide = textes d'origine.
+- Les textes sont des surcharges du dictionnaire (`src/i18n/ui/fr.ts`) : un même texte (ex. nom de ClicGraph)
+  change partout où il apparaît. Coordonnées : prioritaires sur `src/config/site.ts`.
+- Textes longs : Markdown léger — `**gras**`, `*italique*`, `[lien](https://…)`, listes « - », ligne vide = paragraphe.
+- Les contenus des projets restent dans l'éditeur de projet.
+
 ## Studio (thème, animations, sections, navigation)
 
 Menu **Studio** : personnaliser tout le site sans toucher au code, avec aperçu en direct. Voir [STUDIO.md](STUDIO.md).

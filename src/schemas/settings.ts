@@ -5,6 +5,7 @@
  *   layout.json       sections de l'accueil : ordre, visibilité, textes…   (src/lib/studio/layout.ts)
  *   navigation.json   liens de l'en-tête, défilement, lien actif          (src/lib/studio/layout.ts)
  *   animations.json   Animation Studio                                     (src/lib/studio/animations.ts)
+ *   content.json      contenu du site : textes, expertises, entités, contact… (src/lib/studio/content.ts)
  *
  * Tout est facultatif : un fichier vide (ou absent) = le site d'origine.
  * Objets « loose » : un réglage inconnu (version future) est conservé, jamais supprimé.
@@ -80,7 +81,8 @@ export const navigationSchema = z.looseObject({
       z.looseObject({
         id: z.string().min(1).max(60),
         label: z.string().max(60).optional(),
-        target: z.string().min(1).max(120),
+        target: z.string().min(1).max(300),
+        mobileLabel: z.string().max(60).optional(),
         visible: z.boolean().optional(),
         button: z.boolean().optional(),
       }),
@@ -146,11 +148,101 @@ export const animationsSchema = z.looseObject({
     .optional(),
 });
 
+const text = z.string().max(8000);
+const shortText = z.string().max(300);
+const link = z.looseObject({ label: shortText, href: shortText });
+
+export const contentSchema = z.looseObject({
+  version: z.number().optional(),
+  texts: z.record(z.string(), z.union([text, z.array(text)])).optional(),
+  hero: z
+    .looseObject({
+      description: text.optional(),
+      primaryHref: shortText.optional(),
+      secondaryHref: shortText.optional(),
+    })
+    .optional(),
+  expertises: z
+    .looseObject({
+      items: z
+        .array(
+          z.looseObject({
+            slug: z.string(),
+            visible: z.boolean().optional(),
+            extra: text.optional(),
+            icon: z.string().optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  ecosystem: z
+    .looseObject({
+      items: z
+        .array(
+          z.looseObject({
+            id: z.string().min(1).max(60),
+            name: shortText.optional(),
+            role: shortText.optional(),
+            description: text.optional(),
+            logo: shortText.optional(),
+            icon: z.string().optional(),
+            href: shortText.optional(),
+            button: z.boolean().optional(),
+            buttonLabel: shortText.optional(),
+            visible: z.boolean().optional(),
+            domains: z.array(z.string()).optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  about: z
+    .looseObject({
+      steps: z.array(z.looseObject({ title: shortText, text: text })).optional(),
+      blocks: z
+        .array(
+          z.looseObject({
+            id: z.string().min(1).max(60),
+            type: z.enum(['heading', 'text', 'list', 'quote', 'image', 'button']),
+            text: text.optional(),
+            items: z.array(text).optional(),
+            src: shortText.optional(),
+            alt: shortText.optional(),
+            label: shortText.optional(),
+            href: shortText.optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  contact: z
+    .looseObject({
+      email: shortText.optional(),
+      phone: shortText.optional(),
+      whatsapp: shortText.optional(),
+      location: shortText.optional(),
+      intro: text.optional(),
+      socials: z.array(link).optional(),
+      formEndpoint: shortText.optional(),
+      formAccessKey: shortText.optional(),
+    })
+    .optional(),
+  footer: z
+    .looseObject({
+      description: text.optional(),
+      links: z.array(link).optional(),
+      socials: z.boolean().optional(),
+    })
+    .optional(),
+});
+
 export const SETTINGS_SCHEMAS = {
   theme: themeSchema,
   layout: layoutSchema,
   navigation: navigationSchema,
   animations: animationsSchema,
+  content: contentSchema,
 } as const;
 
 export type SettingsName = keyof typeof SETTINGS_SCHEMAS;

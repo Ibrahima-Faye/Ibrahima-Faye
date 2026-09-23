@@ -1,6 +1,8 @@
 ---
 import { useTranslations, type Locale } from '@/i18n';
 import { site, type SocialLink } from '@/config/site';
+import { settings } from '@/lib/settings';
+import { markdownBlocks } from '@/lib/studio/content';
 import Icon, { type IconName } from '@/components/ui/Icon.astro';
 import type { SectionProps } from '@/lib/studio/layout';
 
@@ -43,7 +45,18 @@ const channels: Channel[] = [
     icon: 'message' as const,
     external: true,
   },
+  contact.location && {
+    label: t.contact.location,
+    value: contact.location,
+    href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contact.location)}`,
+    icon: 'pin' as const,
+    external: true,
+  },
 ].filter(Boolean) as Channel[];
+// Contenu du site → Contact : texte d'introduction (facultatif)
+const intro = settings.content.contact?.intro?.trim()
+  ? markdownBlocks(settings.content.contact.intro)
+  : [];
 
 const socials: SocialLink[] = site.socials;
 const hasForm = Boolean(contact.formEndpoint);
@@ -82,6 +95,21 @@ const nothingConfigured = channels.length === 0 && socials.length === 0 && !hasF
     <p class="text-lavender-200 mt-8 text-xl md:text-2xl" data-reveal>
       {t.contact.text}
     </p>
+    {intro.length > 0 && (
+      <div class="text-paper-muted mt-6 max-w-2xl space-y-3 text-lg leading-relaxed" data-reveal>
+        {intro.map((b) =>
+          b.type === 'ul' ? (
+            <ul class="list-disc space-y-1 pl-5">
+              {b.html.map((li) => (
+                <li set:html={li} />
+              ))}
+            </ul>
+          ) : (
+            <p set:html={b.html[0]} />
+          ),
+        )}
+      </div>
+    )}
 
     <div class:list={['mt-16 grid gap-14 md:mt-20', hasForm && 'lg:grid-cols-2 lg:gap-24']}>
       {(channels.length > 0 || socials.length > 0) && (

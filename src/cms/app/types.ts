@@ -8,7 +8,14 @@ export interface Meta {
   statuses: { slug: string; label: string }[];
   spans: SpanInfo[];
   /** Studio : textes d'origine du site (chemin du dictionnaire → texte) et libellés de navigation. */
-  studio?: { texts: Record<string, string | string[]>; nav: Record<string, string> };
+  studio?: {
+    texts: Record<string, string | string[]>;
+    nav: Record<string, string>;
+    /** Dictionnaire d'origine complet (src/i18n/ui/fr.ts) : valeurs par défaut du Contenu du site. */
+    dictionary: Record<string, unknown>;
+    /** Coordonnées d'origine (src/config/site.ts, sans les réglages). */
+    contact: Record<string, string>;
+  };
 }
 
 export interface ProjectSummary {
@@ -150,11 +157,22 @@ export type Route =
   | { name: 'projects' }
   | { name: 'new' }
   | { name: 'edit'; slug: string; tab: 'infos' | 'galerie' | 'apercu' }
-  | { name: 'studio'; tab: StudioTab };
+  | { name: 'studio'; tab: StudioTab }
+  | { name: 'content'; tab: ContentTab };
 
 export type StudioTab = 'theme' | 'animations' | 'sections' | 'navigation';
 
-export type SettingsName = 'theme' | 'layout' | 'navigation' | 'animations';
+export type SettingsName = 'theme' | 'layout' | 'navigation' | 'animations' | 'content';
+
+export type ContentTab =
+  | 'accueil'
+  | 'expertises'
+  | 'projets'
+  | 'ecosysteme'
+  | 'a-propos'
+  | 'contact'
+  | 'footer'
+  | 'navigation';
 
 /** Réglages du site (src/settings/<name>.json) tels que renvoyés par l'API. */
 export interface SettingsFile {

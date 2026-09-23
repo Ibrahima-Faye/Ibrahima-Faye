@@ -3,6 +3,7 @@ import { localizedPath, useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
 import { settings } from '@/lib/settings';
 import { navLinks, sectionAnchor, type SectionKey } from '@/lib/studio/layout';
+import { safeHref } from '@/lib/studio/content';
 
 interface Props {
   locale: Locale;
@@ -23,19 +24,23 @@ const { layout, navigation, theme } = settings;
 const nav = navLinks(navigation)
   .filter((l) => l.visible !== false)
   .map((l) => {
+    const url = l.target.startsWith('url:') ? safeHref(l.target.slice(4)) : undefined;
     const page = l.target.startsWith('page:') ? l.target.slice(5) : '';
     const key = l.target as SectionKey;
-    const hidden = !page && layout.sections?.[key]?.visible === false;
-    const anchor = page ? '' : sectionAnchor(layout, key);
+    const external = Boolean(url);
+    const hidden = !page && !external && layout.sections?.[key]?.visible === false;
+    const anchor = page || external ? '' : sectionAnchor(layout, key);
     const label =
       l.label?.trim() || (l.labelKey ? t.nav[l.labelKey as keyof typeof t.nav] : '') || l.id;
     return {
       id: anchor || l.id,
       key: l.target,
       label,
-      href: page ? localizedPath(page, locale) : `${home}#${anchor}`,
+      mobileLabel: l.mobileLabel?.trim() || label,
+      href: url ?? (page ? localizedPath(page, locale) : `${home}#${anchor}`),
+      external: Boolean(url && /^https?:/i.test(url)),
       button: l.button === true,
-      hidden: hidden || (!page && !anchor),
+      hidden: hidden || (!page && !external && !anchor) || (l.target.startsWith('url:') && !url),
     };
   })
   .filter((l) => !l.hidden);
@@ -96,13 +101,21 @@ const numbered = navigation.mobile?.numbered !== false;
           href={l.href}
           data-nav-link={l.id}
           {...activeAttrs(l.key)}
+          target={l.external ? '_blank' : undefined}
+          rel={l.external ? 'noopener noreferrer' : undefined}
           class="link-line text-paper-muted hover:text-paper data-[active=true]:text-paper py-1 text-[0.82rem] font-medium tracking-wide transition-colors"
         >
           {l.label}
         </a>
       ))}
       {buttons.map((l) => (
-        <a href={l.href} class="btn btn-ghost !px-5 !py-2.5 !text-[0.8rem]" data-nav-link={l.id}>
+        <a
+          href={l.href}
+          class="btn btn-ghost !px-5 !py-2.5 !text-[0.8rem]"
+          data-nav-link={l.id}
+          target={l.external ? '_blank' : undefined}
+          rel={l.external ? 'noopener noreferrer' : undefined}
+        >
           {l.label}
         </a>
       ))}
@@ -147,7 +160,7 @@ const numbered = navigation.mobile?.numbered !== false;
           {numbered && (
             <span class="eyebrow mr-4 align-middle">{String(i + 1).padStart(2, '0')}</span>
           )}
-          {l.label}
+          {l.mobileLabel}
         </a>
       ))}
     </nav>

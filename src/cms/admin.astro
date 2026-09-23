@@ -12,6 +12,7 @@ import { useTranslations } from '@/i18n';
 import { SPAN_INFO } from '@/lib/gallery-layout';
 import fr from '@/i18n/ui/fr';
 import { SECTIONS } from '@/lib/studio/layout';
+import { siteDefaults } from '@/config/site';
 
 /** Texte d'origine (dictionnaire non modifié) d'un chemin « a.b ». */
 const original = (path: string) =>
@@ -39,6 +40,8 @@ const meta = {
       SECTIONS.flatMap((s) => s.fields).map((field) => [field.path, original(field.path)]),
     ),
     nav: { ...fr.nav },
+    dictionary: fr,
+    contact: { ...siteDefaults.contact, name: siteDefaults.name },
   },
 };
 ---

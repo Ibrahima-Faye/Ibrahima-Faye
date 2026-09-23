@@ -40,13 +40,20 @@ function merge<T>(base: T, override: unknown): T {
 
 const cache = new Map<Locale, Dictionary>();
 
-/** Textes modifiés depuis l'administration (src/settings/layout.json + slogan du thème), appliqués au français. */
+/**
+ * Textes modifiés depuis l'administration, appliqués au français : Contenu du site
+ * (src/settings/content.json), anciennes surcharges du Studio (layout.json), slogan du thème.
+ */
 function customized(base: Dictionary): Dictionary {
   const tagline = settings.theme.identity?.tagline?.trim();
-  return applyContent(base, {
+  const dict = applyContent(base, {
     ...(tagline ? { 'meta.jobTitle': tagline } : {}),
     ...settings.layout.content,
+    ...settings.content.texts,
   });
+  // étapes de la démarche (liste de { titre, texte }) : remplacées d'un bloc
+  const steps = settings.content.about?.steps?.filter((s) => s.title?.trim());
+  return steps?.length ? { ...dict, about: { ...dict.about, steps } } : dict;
 }
 
 /** Dictionnaire complet et typé pour une langue. */

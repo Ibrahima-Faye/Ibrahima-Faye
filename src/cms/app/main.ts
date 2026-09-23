@@ -9,6 +9,7 @@
  *   #/projets/<slug>/galerie Éditeur → Galerie
  *   #/projets/<slug>/apercu  Éditeur → Prévisualisation
  *   #/studio/<onglet>        Studio : theme | animations | sections | navigation
+ *   #/contenu/<catégorie>    Contenu du site : accueil | expertises | projets | ecosysteme | a-propos | contact | footer | navigation
  */
 import type { Meta, Route, View } from './types';
 import { h, icon } from './ui';
@@ -17,7 +18,19 @@ import { mountEditor } from './views/editor';
 import { mountNewProject } from './views/new-project';
 import { mountProjects } from './views/projects';
 import { mountStudio } from './views/studio';
-import type { StudioTab } from './types';
+import { mountContent } from './views/content';
+import type { ContentTab, StudioTab } from './types';
+
+const CONTENT_TABS: ContentTab[] = [
+  'accueil',
+  'expertises',
+  'projets',
+  'ecosysteme',
+  'a-propos',
+  'contact',
+  'footer',
+  'navigation',
+];
 
 const STUDIO_TABS: StudioTab[] = ['theme', 'animations', 'sections', 'navigation'];
 
@@ -41,6 +54,10 @@ const meta = JSON.parse(document.getElementById('cms-meta')!.textContent ?? '{}'
 
 function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  if (parts[0] === 'contenu') {
+    const tab = CONTENT_TABS.find((t) => t === parts[1]) ?? 'accueil';
+    return { name: 'content', tab };
+  }
   if (parts[0] === 'studio') {
     const tab = STUDIO_TABS.find((t) => t === parts[1]) ?? 'theme';
     return { name: 'studio', tab };
@@ -60,6 +77,7 @@ const NAV = [
   { id: 'dashboard', label: 'Tableau de bord', href: '#/', icon: 'dashboard' as const },
   { id: 'projects', label: 'Projets', href: '#/projets', icon: 'folder' as const },
   { id: 'new', label: 'Nouveau projet', href: '#/projets/nouveau', icon: 'plus' as const },
+  { id: 'content', label: 'Contenu du site', href: '#/contenu/accueil', icon: 'edit' as const },
   { id: 'studio', label: 'Studio', href: '#/studio/theme', icon: 'layout' as const },
 ];
 
@@ -150,7 +168,9 @@ async function navigate() {
           ? mountNewProject(main, meta)
           : route.name === 'studio'
             ? await mountStudio(main, route, meta)
-            : await mountEditor(main, route, meta);
+            : route.name === 'content'
+              ? await mountContent(main, route, meta)
+              : await mountEditor(main, route, meta);
 
   if (id !== token) {
     await view.dispose(); // une navigation plus récente a pris le relais
@@ -162,7 +182,9 @@ async function navigate() {
       ? `${route.slug} — Administration`
       : route.name === 'studio'
         ? 'Studio — Administration'
-        : 'Administration — Ibrahima Faye';
+        : route.name === 'content'
+          ? 'Contenu du site — Administration'
+          : 'Administration — Ibrahima Faye';
 }
 
 window.addEventListener('hashchange', () => void navigate());

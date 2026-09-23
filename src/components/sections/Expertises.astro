@@ -1,5 +1,6 @@
 ---
-import { domainNumber, domainSlugs } from '@/data/domains';
+import { settings } from '@/lib/settings';
+import { expertiseRows, inlineMarkdown } from '@/lib/studio/content';
 import { localizedPath, plural, useTranslations, type Locale } from '@/i18n';
 import { getDomainMedia } from '@/lib/media';
 import DomainFrame from '@/components/ui/DomainFrame.astro';
@@ -21,11 +22,14 @@ const { locale, counts, section } = Astro.props;
 const t = useTranslations(locale);
 const projectsPath = localizedPath('/projets/', locale);
 
-const rows = domainSlugs.map((slug) => {
+// Contenu du site → Expertises : ordre, visibilité, texte complémentaire, icône (sinon : site d'origine)
+const rows = expertiseRows(settings.content).map(({ slug, extra, icon }, i) => {
   const count = counts.get(slug) ?? 0;
   return {
     slug,
-    number: domainNumber(slug),
+    number: String(i + 1).padStart(2, '0'),
+    extra,
+    icon,
     ...t.domains[slug],
     count,
     href: count > 0 ? `${projectsPath}?domaine=${slug}` : undefined,
@@ -80,6 +84,12 @@ const rows = domainSlugs.map((slug) => {
                   <p class="desc text-paper-muted mt-3 max-w-md text-[0.95rem] leading-relaxed">
                     {row.description}
                   </p>
+                  {row.extra && (
+                    <p
+                      class="text-paper-faint mt-2 max-w-md text-[0.88rem] leading-relaxed"
+                      set:html={inlineMarkdown(row.extra)}
+                    />
+                  )}
                 </span>
                 <span class="col-start-2 row-start-1 flex items-center justify-end gap-4 xl:col-auto xl:row-auto">
                   {row.count > 0 && (
@@ -88,7 +98,7 @@ const rows = domainSlugs.map((slug) => {
                     </span>
                   )}
                   <DomainIcon
-                    slug={row.slug}
+                    slug={row.icon}
                     class="icon text-paper-faint size-9 shrink-0 transition-all duration-700 xl:size-11"
                   />
                 </span>

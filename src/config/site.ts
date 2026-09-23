@@ -13,6 +13,10 @@
 import { settings } from '@/lib/settings';
 
 const identity = settings.theme.identity ?? {};
+/** Coordonnées modifiées dans l'administration (Contenu du site → Contact) : prioritaires. */
+const contact = settings.content.contact ?? {};
+const pick = (own: string | undefined, fallback: string) =>
+  own === undefined ? fallback : own.trim();
 
 export interface SocialLink {
   /** Nom affiché, ex. « LinkedIn » */
@@ -40,14 +44,20 @@ export interface SiteConfig {
     formEndpoint: string;
     /** Clé d'accès si le service en demande une (Web3Forms : access_key). */
     formAccessKey: string;
+    /** Localisation affichée (ville, pays…). Vide = non affichée. */
+    location: string;
   };
   /** Réseaux / profils. Ajouter, retirer ou réordonner librement. */
   socials: SocialLink[];
 }
 
-export const site: SiteConfig = {
-  name: identity.name?.trim() || 'Ibrahima Faye',
-  initials: identity.initials?.trim() || 'IF',
+/**
+ * Valeurs de référence (écrites ici, dans le code). L'administration (Studio → Identité,
+ * Contenu du site → Contact) peut les remplacer ; sans réglage, ce sont elles qui s'affichent.
+ */
+export const siteDefaults: SiteConfig = {
+  name: 'Ibrahima Faye',
+  initials: 'IF',
 
   contact: {
     email: '',
@@ -55,6 +65,7 @@ export const site: SiteConfig = {
     whatsapp: '',
     formEndpoint: '',
     formAccessKey: '',
+    location: '',
   },
 
   socials: [
@@ -62,4 +73,19 @@ export const site: SiteConfig = {
     // { label: 'Instagram', href: 'https://www.instagram.com/...' },
     // { label: 'GitHub', href: 'https://github.com/...' },
   ],
+};
+
+const base = siteDefaults;
+export const site: SiteConfig = {
+  name: identity.name?.trim() || base.name,
+  initials: identity.initials?.trim() || base.initials,
+  contact: {
+    email: pick(contact.email, base.contact.email),
+    phone: pick(contact.phone, base.contact.phone),
+    whatsapp: pick(contact.whatsapp, base.contact.whatsapp),
+    formEndpoint: pick(contact.formEndpoint, base.contact.formEndpoint),
+    formAccessKey: pick(contact.formAccessKey, base.contact.formAccessKey),
+    location: pick(contact.location, base.contact.location),
+  },
+  socials: contact.socials?.filter((x) => x.label?.trim() && x.href?.trim()) ?? base.socials,
 };

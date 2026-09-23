@@ -16,7 +16,9 @@
  *   GET    /file/:slug/:file                    fichier d'origine (Range accepté)
  *   GET    /api/settings                        réglages du site (Studio) : thème, sections, navigation, animations
  *   GET    /api/settings/:name                  un réglage
- *   PUT    /api/settings/:name                  enregistrement { data, baseUpdatedAt?, force? }
+ *   PUT    /api/settings/:name                  enregistrement { data, baseUpdatedAt?, force?, snapshot? }
+ *   GET    /api/settings/:name/history          versions précédentes (.cms/historique/reglages/)
+ *   GET    /api/settings/:name/history/:id      une version précédente
  *   POST   /api/identity?name=logo.svg          image d'identité → public/identite/ (corps = fichier brut)
  */
 import { HttpError, guard, readJson, sendJson, serveFile } from './http.mjs';
@@ -59,6 +61,10 @@ export function createApi(store, settings) {
           return sendJson(res, 200, await settings.read(parts[2]));
         if (parts.length === 3 && method === 'PUT')
           return sendJson(res, 200, await settings.save(parts[2], await readJson(req)));
+        if (parts.length === 4 && parts[3] === 'history' && method === 'GET')
+          return sendJson(res, 200, await settings.history(parts[2]));
+        if (parts.length === 5 && parts[3] === 'history' && method === 'GET')
+          return sendJson(res, 200, await settings.readHistory(parts[2], parts[4]));
         throw new HttpError(405, 'Méthode non autorisée.');
       }
       if (parts[0] === 'api' && parts[1] === 'identity' && parts.length === 2 && method === 'POST')

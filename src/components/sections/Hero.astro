@@ -2,7 +2,9 @@
 import { localizedPath, useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
 import Button from '@/components/ui/Button.astro';
-import type { SectionProps } from '@/lib/studio/layout';
+import { sectionAnchor, type SectionProps } from '@/lib/studio/layout';
+import { markdownBlocks, safeHref } from '@/lib/studio/content';
+import { settings } from '@/lib/settings';
 
 interface Props {
   locale: Locale;
@@ -16,6 +18,13 @@ const [firstName = '', ...rest] = site.name.split(' ');
 const lastName = rest.join(' ');
 const parts = t.hero.subtitle.split(' · ');
 const home = localizedPath('/', locale);
+// Contenu du site → Accueil : liens des boutons, description (vides = site d'origine)
+const hero = settings.content.hero ?? {};
+const primaryHref =
+  safeHref(hero.primaryHref) ?? `${home}#${sectionAnchor(settings.layout, 'projects')}`;
+const secondaryHref =
+  safeHref(hero.secondaryHref) ?? `${home}#${sectionAnchor(settings.layout, 'contact')}`;
+const description = hero.description?.trim() ? markdownBlocks(hero.description) : [];
 ---
 
 <section
@@ -118,9 +127,29 @@ const home = localizedPath('/', locale);
       ))}
     </p>
 
+    {description.length > 0 && (
+      <div
+        class="text-paper-muted mt-7 max-w-2xl space-y-3 text-lg leading-relaxed"
+        data-intro="fade"
+        data-anim="hero.description"
+      >
+        {description.map((b) =>
+          b.type === 'ul' ? (
+            <ul class="list-disc space-y-1 pl-5">
+              {b.html.map((li) => (
+                <li set:html={li} />
+              ))}
+            </ul>
+          ) : (
+            <p set:html={b.html[0]} />
+          ),
+        )}
+      </div>
+    )}
+
     <div class="mt-11 flex flex-wrap items-center gap-4" data-intro="fade" data-anim="hero.actions">
-      <Button href={`${home}#projets`}>{t.hero.ctaProjects}</Button>
-      <Button href={`${home}#contact`} variant="ghost" icon="arrow-up-right">
+      <Button href={primaryHref}>{t.hero.ctaProjects}</Button>
+      <Button href={secondaryHref} variant="ghost" icon="arrow-up-right">
         {t.hero.ctaContact}
       </Button>
     </div>
