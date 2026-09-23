@@ -3,13 +3,11 @@
  * Chaque modification appelle `touch()` : l'enregistrement part ~1 s plus tard (ou tout de suite avec `flush()`).
  */
 import { DEFAULT_ALIGN, defaultSpan, parseRatio, type Span } from '@/lib/gallery-layout';
+import { effectiveCover, galleryEntries } from '@/lib/media-rules';
 import { api } from './api';
 import type { FileInfo, GalleryItem, MediaEntry, ProjectData, ProjectDetail } from './types';
-import { natural } from './ui';
 
 export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'error';
-
-const baseOf = (name: string) => name.replace(/\.[^.]+$/, '');
 
 /** Ratio (largeur / hauteur) d'un média de la galerie. */
 export function itemRatio(item: GalleryItem, files: FileInfo[]): number {
@@ -50,17 +48,13 @@ export class Editor {
   }
 
   /* ------------------------------------------------------------------ construction de la galerie */
+  /** Composition de la galerie — mêmes règles que le site (src/lib/media-rules.ts). */
   private buildItems(files: FileInfo[], media: MediaEntry[]): GalleryItem[] {
-    // les affiches (images du même nom qu'une vidéo) ne sont pas des médias de galerie
-    const usable = files.filter((f) => !f.posterFor);
-    const byName = new Map(usable.map((f) => [f.name, f]));
-    const listed = media.filter((m) => byName.has(m.file));
-    const listedNames = new Set(listed.map((m) => m.file));
-    const rest = usable
-      .filter((f) => !listedNames.has(f.name))
-      .sort((a, b) => natural.compare(a.name, b.name));
-
-    const make = (file: FileInfo, entry?: MediaEntry): GalleryItem => {
+    const byName = new Map(files.map((f) => [f.name, f]));
+    const settings = new Map(media.map((m) => [m.file, m]));
+    return galleryEntries(files, media).map(({ file: name, hidden }) => {
+      const file = byName.get(name)!;
+      const entry = settings.get(name);
       const item: GalleryItem = {
         file: file.name,
         kind: file.kind,
@@ -72,26 +66,24 @@ export class Editor {
         alt: entry?.alt ?? '',
         caption: entry?.caption ?? '',
         ratio: entry?.ratio,
-        // même règle que le site : `cover.*` non listé n'est pas dans la galerie
-        hidden: entry?.hidden ?? (!entry && baseOf(file.name).toLowerCase() === 'cover'),
+        hidden, // `cover.*` non listé : masqué, comme sur le site
         poster: file.poster,
         v: file.mtime,
       };
       if (!entry?.span) item.span = defaultSpan(item.kind, itemRatio(item, files));
       return item;
-    };
-    return [...listed.map((m) => make(byName.get(m.file)!, m)), ...rest.map((f) => make(f))];
+    });
+  }
+
+  /** Le projet est-il mis en page en blocs ? (la composition ci-dessous ne concerne alors que les médias non placés) */
+  hasBlocks(): boolean {
+    return Array.isArray(this.data.blocks);
   }
 
   /* ------------------------------------------------------------------ couverture */
   /** Fichier de couverture effectif — même règle que le site : champ `cover`, sinon `cover.*`, sinon 1re image. */
   coverFile(): string | undefined {
-    const images = this.files
-      .filter((f) => f.kind === 'image')
-      .sort((a, b) => natural.compare(a.name, b.name));
-    const chosen = images.find((f) => f.name === this.data.cover);
-    return (chosen ?? images.find((f) => baseOf(f.name).toLowerCase() === 'cover') ?? images[0])
-      ?.name;
+    return effectiveCover(this.data.cover, this.files);
   }
 
   setCover(file: string | undefined) {
@@ -142,6 +134,14 @@ export class Editor {
     this.files = this.files.filter((f) => !names.includes(f.name));
     this.items = this.items.filter((i) => !names.includes(i.file));
     if (this.data.cover && names.includes(this.data.cover)) delete this.data.cover;
+    // Les emplacements de ces fichiers sont retirés des blocs ; les blocs eux-mêmes ne sont JAMAIS supprimés.
+    if (Array.isArray(this.data.blocks)) {
+      this.data.blocks = this.data.blocks.map((block) =>
+        Array.isArray(block.items)
+          ? { ...block, items: block.items.filter((item) => !names.includes(item.file)) }
+          : block,
+      );
+    }
     this.touch();
   }
 

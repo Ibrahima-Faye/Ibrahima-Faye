@@ -3,23 +3,38 @@
  *
  * L'administration lit et écrit EXACTEMENT les mêmes fichiers que ceux utilisés par le site :
  * aucune base de données, le site reste statique. Les suppressions vont dans `.trash/` (récupérables).
+ *
+ * Règles et vocabulaire : les MÊMES modules que le site (chargés par Vite via `load`) —
+ * formats et règles des médias (src/lib/media-rules.ts), blocs (src/schemas/blocks.ts),
+ * catégories / marques / statuts (src/data), grille (src/lib/gallery-layout.ts).
+ *
+ * Sécurité des données :
+ *  - un enregistrement sans changement réel n'écrit rien (le fichier reste identique à l'octet près) ;
+ *  - avant toute réécriture, la version précédente de project.md est copiée dans .cms/historique/<slug>/ ;
+ *  - les commentaires et la mise en forme du frontmatter sont conservés ; seules les valeurs modifiées changent ;
+ *  - les blocs ne sont jamais retirés implicitement ; les champs inconnus sont conservés.
  */
-import { createWriteStream, existsSync, readFileSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { createWriteStream, existsSync } from 'node:fs';
+import {
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  stat,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import { createHash, randomBytes } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import sharp from 'sharp';
-import { HttpError, MIME } from './http.mjs';
+import { HttpError } from './http.mjs';
 
-const IMAGE_EXT = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif']);
-const VIDEO_EXT = new Set(['mp4', 'webm']);
-const SPANS = [3, 4, 6, 8, 9, 12];
-const ALIGNS = ['start', 'center', 'end'];
 const MAX_UPLOAD = 2 * 1024 * 1024 * 1024; // 2 Go
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const RATIO = /^\d+(\.\d+)?\s*[:/]\s*\d+(\.\d+)?$/;
 const natural = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
 
 /** Ordre canonique des champs dans project.md (les champs inconnus suivent, intacts). */
@@ -41,19 +56,13 @@ const KEY_ORDER = [
   'coverAlt',
   'links',
   'media',
+  'blocks',
+  'unplaced',
   'draft',
 ];
 
 const extOf = (name) => path.extname(name).slice(1);
 const baseOf = (name) => name.slice(0, name.length - path.extname(name).length);
-const isLowerOrUpper = (ext) => ext === ext.toLowerCase() || ext === ext.toUpperCase();
-
-function kindOf(name) {
-  const ext = extOf(name);
-  if (!isLowerOrUpper(ext)) return null; // le site ne détecte que .jpg ou .JPG (pas .Jpg)
-  const e = ext.toLowerCase();
-  return IMAGE_EXT.has(e) ? 'image' : VIDEO_EXT.has(e) ? 'video' : null;
-}
 
 export const slugify = (text) =>
   String(text)
@@ -72,23 +81,55 @@ export function safeFileName(original) {
   return `${base}.${ext}`;
 }
 
-export function createStore(root) {
+/** Comparaison de données YAML sans tenir compte de l'ordre des clés. */
+const sameValue = (a, b) => isDeepStrictEqual(canonical(a), canonical(b));
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value)
+        .filter((k) => value[k] !== undefined)
+        .sort()
+        .map((k) => [k, canonical(value[k])]),
+    );
+  }
+  return value;
+}
+
+const stamp = () => new Date().toISOString().replace(/[:.]/g, '-');
+
+/**
+ * @param {string} root racine du projet
+ * @param {{ load: (id: string) => Promise<any> }} options `load` charge un module du site (Vite `ssrLoadModule`)
+ */
+export function createStore(root, { load }) {
   const projectsDir = path.join(root, 'src/content/projects');
   const trashDir = path.join(root, '.trash');
+  const historyDir = path.join(root, '.cms/historique');
   const cacheDir = path.join(root, 'node_modules/.cache/local-cms');
   const metaCache = new Map();
 
-  /* ------------------------------------------------------------------ valeurs autorisées */
-  function readList(file, name) {
-    const text = readFileSync(path.join(root, file), 'utf8');
-    const match = text.match(new RegExp(`export const ${name} = \\[([\\s\\S]*?)\\] as const`));
-    if (!match) throw new Error(`Liste « ${name} » introuvable dans ${file}`);
-    return [...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  /* ------------------------------------------------------------------ modules partagés avec le site */
+  /** @type {{ rules: any, blocks: any, project: any, layout: any, domains: any, entities: any }} */
+  let m;
+  /** À appeler avant toute opération (l'API le fait à chaque requête ; Vite met les modules en cache). */
+  async function ready() {
+    const [rules, blocks, project, layout, domains, entities] = await Promise.all([
+      load('/src/lib/media-rules.ts'),
+      load('/src/schemas/blocks.ts'),
+      load('/src/schemas/project.ts'),
+      load('/src/lib/gallery-layout.ts'),
+      load('/src/data/domains.ts'),
+      load('/src/data/entities.ts'),
+    ]);
+    m = { rules, blocks, project, layout, domains, entities };
   }
+
+  const kindOf = (name) => m.rules.kindOf(name);
   const allowed = () => ({
-    categories: readList('src/data/domains.ts', 'domainSlugs'),
-    entities: readList('src/data/entities.ts', 'entitySlugs'),
-    statuses: readList('src/data/entities.ts', 'projectStatuses'),
+    categories: [...m.domains.domainSlugs],
+    entities: [...m.entities.entitySlugs],
+    statuses: [...m.entities.projectStatuses],
   });
 
   /* ------------------------------------------------------------------ chemins */
@@ -117,11 +158,19 @@ export function createStore(root) {
     return { data, body: match[2].replace(/^\r?\n+/, '') };
   }
 
-  function serializeProject(data, body) {
+  const orderedKeys = (data) => [
+    ...KEY_ORDER.filter((k) => data[k] !== undefined),
+    ...Object.keys(data).filter((k) => !KEY_ORDER.includes(k) && data[k] !== undefined),
+  ];
+  const rank = (key) => {
+    const i = KEY_ORDER.indexOf(key);
+    return i === -1 ? KEY_ORDER.length : i;
+  };
+
+  /** Nouveau fichier : frontmatter dans l'ordre canonique. */
+  function serializeFresh(data, body) {
     const ordered = {};
-    for (const key of KEY_ORDER) if (data[key] !== undefined) ordered[key] = data[key];
-    for (const key of Object.keys(data))
-      if (!(key in ordered) && data[key] !== undefined) ordered[key] = data[key];
+    for (const key of orderedKeys(data)) ordered[key] = data[key];
     const doc = new YAML.Document(ordered);
     doc.commentBefore =
       ' Fiche gérée par l’administration locale (/admin). Modifiable aussi à la main : le site lit ce fichier tel quel.';
@@ -130,11 +179,87 @@ export function createStore(root) {
     return `---\n${yaml}---\n${text ? `\n${text}\n` : ''}`;
   }
 
+  /**
+   * Fichier existant : on modifie le document YAML d'origine, clé par clé.
+   * Commentaires, guillemets, lignes vides et ordre des champs non modifiés restent tels quels.
+   */
+  function serializeProject(data, body, original) {
+    const match = original?.match(FRONTMATTER);
+    if (!match) return serializeFresh(data, body);
+    const doc = YAML.parseDocument(match[1]);
+    if (!YAML.isMap(doc.contents)) return serializeFresh(data, body);
+    const current = doc.toJS() ?? {};
+
+    for (const key of Object.keys(current)) if (data[key] === undefined) doc.delete(key);
+    for (const key of orderedKeys(data)) {
+      const value = data[key];
+      if (key in current && sameValue(current[key], value)) continue;
+      const node = doc.get(key, true);
+      if (YAML.isScalar(node) && (value === null || typeof value !== 'object')) {
+        node.value = value; // garde le style (guillemets…) et le commentaire de fin de ligne
+      } else if (doc.has(key)) {
+        doc.set(key, doc.createNode(value));
+      } else {
+        // nouveau champ : à sa place dans l'ordre canonique
+        const items = doc.contents.items;
+        const at = items.findIndex((pair) => rank(String(pair.key?.value ?? pair.key)) > rank(key));
+        items.splice(at === -1 ? items.length : at, 0, doc.createPair(key, value));
+      }
+    }
+    const yaml = doc.toString({ lineWidth: 0, flowCollectionPadding: false });
+    const text = body.trim();
+    const originalBody = match[2];
+    const bodyPart =
+      originalBody.replace(/^\r?\n+/, '').trim() === text
+        ? originalBody
+        : text
+          ? `\n${text}\n`
+          : '';
+    return `---\n${yaml}---\n${bodyPart}`;
+  }
+
   /* ------------------------------------------------------------------ validation */
   const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 
+  /** Identifiant court et unique (blocs et éléments sans `id`). */
+  function makeId(prefix, used) {
+    let id;
+    do id = `${prefix}-${randomBytes(3).toString('hex')}`;
+    while (used.has(id));
+    used.add(id);
+    return id;
+  }
+
+  /** Blocs : forme (schéma partagé) + cohérence ; les `id` manquants sont attribués (puis stables). */
+  function cleanBlocks(blocks, bad) {
+    const parsed = m.blocks.blocksSchema.safeParse(blocks);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      bad(
+        `Blocs invalides (${(first?.path ?? []).join(' › ') || 'blocks'}) : ${first?.message ?? 'forme incorrecte'}.`,
+      );
+    }
+    const errors = m.blocks.validateBlocks(blocks).filter((i) => i.level === 'error');
+    if (errors.length) bad(errors.map((e) => e.message).join(' '));
+    const used = new Set();
+    for (const b of blocks) {
+      if (b.id) used.add(b.id);
+      for (const i of Array.isArray(b.items) ? b.items : []) if (i?.id) used.add(i.id);
+    }
+    // les objets d'origine sont conservés tels quels (champs inconnus compris) ; seuls les `id` absents sont ajoutés
+    return blocks.map((b) => ({
+      ...(b.id ? {} : { id: makeId('b', used) }),
+      ...b,
+      ...(Array.isArray(b.items)
+        ? { items: b.items.map((i) => (i.id ? i : { id: makeId('i', used), ...i })) }
+        : {}),
+    }));
+  }
+
   function cleanData(input, existing = {}) {
     const lists = allowed();
+    const { SPANS, ALIGNS } = m.layout;
+    const RATIO = m.project.ratioPattern;
     const bad = (message) => {
       throw new HttpError(400, message);
     };
@@ -197,29 +322,41 @@ export function createStore(root) {
 
     const media = [];
     const seen = new Set();
-    for (const m of Array.isArray(input.media) ? input.media : []) {
-      const file = assertFileName(m?.file);
+    for (const entry of Array.isArray(input.media) ? input.media : []) {
+      const file = assertFileName(entry?.file);
       if (seen.has(file)) continue;
       seen.add(file);
-      const entry = { file };
-      if (m.span !== undefined && m.span !== null) {
-        if (!SPANS.includes(m.span)) bad(`Taille de galerie invalide : ${m.span}.`);
-        entry.span = m.span;
+      const item = { file };
+      if (entry.span !== undefined && entry.span !== null) {
+        if (!SPANS.includes(entry.span)) bad(`Taille de galerie invalide : ${entry.span}.`);
+        item.span = entry.span;
       }
-      if (m.align && m.align !== 'center') {
-        if (!ALIGNS.includes(m.align)) bad('Alignement invalide.');
-        entry.align = m.align;
+      if (entry.align && entry.align !== 'center') {
+        if (!ALIGNS.includes(entry.align)) bad('Alignement invalide.');
+        item.align = entry.align;
       }
-      if (str(m.alt)) entry.alt = str(m.alt);
-      if (str(m.caption)) entry.caption = str(m.caption);
-      if (str(m.ratio)) {
-        if (!RATIO.test(m.ratio.trim())) bad(`Ratio invalide : « ${m.ratio} ».`);
-        entry.ratio = m.ratio.trim();
+      if (str(entry.alt)) item.alt = str(entry.alt);
+      if (str(entry.caption)) item.caption = str(entry.caption);
+      if (str(entry.ratio)) {
+        if (!RATIO.test(entry.ratio.trim())) bad(`Ratio invalide : « ${entry.ratio} ».`);
+        item.ratio = entry.ratio.trim();
       }
-      if (m.hidden === true) entry.hidden = true;
-      media.push(entry);
+      if (entry.hidden === true) item.hidden = true;
+      media.push(item);
     }
     if (media.length) out.media = media;
+
+    // Blocs : jamais retirés implicitement. Absent de la requête = inchangé ; `null` = retrait demandé.
+    const blocks = input.blocks === undefined ? existing.blocks : input.blocks;
+    if (blocks !== undefined && blocks !== null) {
+      if (!Array.isArray(blocks)) bad('Blocs invalides : une liste est attendue.');
+      out.blocks = cleanBlocks(blocks, bad);
+    }
+    const unplaced = input.unplaced === undefined ? existing.unplaced : input.unplaced;
+    if (unplaced !== undefined && unplaced !== null) {
+      if (!['append', 'hide'].includes(unplaced)) bad('Réglage « unplaced » invalide.');
+      out.unplaced = unplaced;
+    }
 
     out.draft = input.draft === false ? false : true;
 
@@ -234,9 +371,9 @@ export function createStore(root) {
     if (metaCache.has(key)) return metaCache.get(key);
     let size = {};
     try {
-      const m = await sharp(file, { failOn: 'none' }).metadata();
-      const swap = (m.orientation ?? 1) >= 5;
-      size = { width: swap ? m.height : m.width, height: swap ? m.width : m.height };
+      const meta = await sharp(file, { failOn: 'none' }).metadata();
+      const swap = (meta.orientation ?? 1) >= 5;
+      size = { width: swap ? meta.height : meta.width, height: swap ? meta.width : meta.height };
     } catch {
       /* image illisible : dimensions inconnues */
     }
@@ -261,34 +398,21 @@ export function createStore(root) {
         };
       }),
     );
-    // une image portant le même nom qu'une vidéo est son affiche (poster)
-    const videos = new Map(
-      infos.filter((i) => i.kind === 'video').map((v) => [baseOf(v.name).toLowerCase(), v]),
-    );
+    // une image portant le même nom qu'une vidéo est son affiche (poster) — règle partagée avec le site
+    const { posterOf, posterFor } = m.rules.posterPairs(infos);
     for (const info of infos) {
-      if (info.kind !== 'image') continue;
-      const video = videos.get(baseOf(info.name).toLowerCase());
-      if (video) {
-        info.posterFor = video.name;
-        video.poster = info.name;
-      }
+      if (posterFor.has(info.name)) info.posterFor = posterFor.get(info.name);
+      if (posterOf.has(info.name)) info.poster = posterOf.get(info.name);
     }
     return infos.sort((a, b) => natural.compare(a.name, b.name));
-  }
-
-  /** Nom du fichier de couverture effectif (même règle que le site). */
-  function effectiveCover(data, files) {
-    const images = files.filter((f) => f.kind === 'image');
-    if (data.cover && images.some((f) => f.name === data.cover)) return data.cover;
-    const byName = images.find((f) => baseOf(f.name).toLowerCase() === 'cover');
-    return (byName ?? images[0])?.name;
   }
 
   /* ------------------------------------------------------------------ projets */
   async function readProject(slug) {
     const file = mdOf(slug);
     if (!existsSync(file)) throw new HttpError(404, `Projet introuvable : ${slug}`);
-    return { file, ...parseProject(await readFile(file, 'utf8')) };
+    const text = await readFile(file, 'utf8');
+    return { file, text, ...parseProject(text) };
   }
 
   async function getProject(slug) {
@@ -313,14 +437,9 @@ export function createStore(root) {
           const names = (await readdir(path.join(projectsDir, slug))).filter(
             (n) => !n.startsWith('.') && kindOf(n),
           );
-          const files = names.map((name) => ({ name, kind: kindOf(name) }));
-          const videoBases = new Set(
-            files.filter((f) => f.kind === 'video').map((f) => baseOf(f.name).toLowerCase()),
-          );
-          const media = files.filter(
-            (f) => f.kind === 'video' || !videoBases.has(baseOf(f.name).toLowerCase()),
-          );
-          const cover = effectiveCover(data, files);
+          const files = m.rules.mediaFiles(names);
+          const { posterFor } = m.rules.posterPairs(files);
+          const cover = m.rules.effectiveCover(data.cover, files);
           return {
             slug,
             title: data.title ?? slug,
@@ -336,7 +455,7 @@ export function createStore(root) {
             coverV: cover
               ? Math.round((await stat(path.join(projectsDir, slug, cover))).mtimeMs)
               : undefined,
-            mediaCount: media.length,
+            mediaCount: files.filter((f) => !posterFor.has(f.name)).length,
             updatedAt: Math.round(st.mtimeMs),
           };
         } catch (error) {
@@ -368,18 +487,28 @@ export function createStore(root) {
 
     const data = cleanData({ ...input, title, draft: true });
     await mkdir(dirOf(slug), { recursive: true });
-    await writeFile(mdOf(slug), serializeProject(data, ''), 'utf8');
+    await writeFile(mdOf(slug), serializeFresh(data, ''), 'utf8');
     return getProject(slug);
   }
 
+  /** Copie la version actuelle de project.md dans .cms/historique/<slug>/ avant de la remplacer. */
+  async function keepHistory(slug, file) {
+    const dir = path.join(historyDir, slug);
+    await mkdir(dir, { recursive: true });
+    await copyFile(file, path.join(dir, `${stamp()}.md`));
+  }
+
   async function saveProject(slug, input) {
-    const { file, data: existing } = await readProject(slug);
+    const { file, text, data: existing, body: existingBody } = await readProject(slug);
     const data = cleanData(input.data ?? {}, existing);
-    await writeFile(
-      file,
-      serializeProject(data, typeof input.body === 'string' ? input.body : ''),
-      'utf8',
-    );
+    const body = typeof input.body === 'string' ? input.body : existingBody;
+
+    // Rien n'a changé : on n'écrit pas (le fichier reste identique à l'octet près).
+    if (sameValue(data, existing) && body.trim() === existingBody.trim()) {
+      return { slug, updatedAt: Math.round((await stat(file)).mtimeMs), unchanged: true };
+    }
+    await keepHistory(slug, file);
+    await writeFile(file, serializeProject(data, body, text), 'utf8');
     return { slug, updatedAt: Math.round((await stat(file)).mtimeMs) };
   }
 
@@ -396,8 +525,7 @@ export function createStore(root) {
   async function trashProject(slug) {
     await readProject(slug);
     await mkdir(trashDir, { recursive: true });
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const dest = path.join(trashDir, `${stamp}-${slug}`);
+    const dest = path.join(trashDir, `${stamp()}-${slug}`);
     await rename(dirOf(slug), dest);
     return { trashed: path.relative(root, dest).replace(/\\/g, '/') };
   }
@@ -406,10 +534,9 @@ export function createStore(root) {
   async function trashFile(slug, name) {
     const from = path.join(dirOf(slug), name);
     if (!existsSync(from)) return;
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const dir = path.join(trashDir, `${slug}-medias`);
     await mkdir(dir, { recursive: true });
-    await rename(from, path.join(dir, `${stamp}-${name}`));
+    await rename(from, path.join(dir, `${stamp()}-${name}`));
   }
 
   async function saveUpload(slug, req, { name, poster }) {
@@ -423,7 +550,7 @@ export function createStore(root) {
     if (!kind)
       throw new HttpError(
         415,
-        'Format non pris en charge. Utilise JPG, PNG, WebP, AVIF, MP4 ou WebM.',
+        `Format non pris en charge. Utilise ${m.rules.formatLabels('image')}, ${m.rules.formatLabels('video')}.`,
       );
 
     let target = cleaned;
@@ -490,11 +617,7 @@ export function createStore(root) {
     const name = assertFileName(file);
     const p = path.join(dirOf(slug), name);
     if (!existsSync(p) || !kindOf(name)) throw new HttpError(404, 'Fichier introuvable.');
-    return {
-      path: p,
-      mime: MIME[extOf(name).toLowerCase()] ?? 'application/octet-stream',
-      kind: kindOf(name),
-    };
+    return { path: p, mime: m.rules.mimeOf(name), kind: kindOf(name) };
   }
 
   /** Miniature WebP mise en cache (les originaux peuvent peser plusieurs dizaines de Mo). */
@@ -520,6 +643,7 @@ export function createStore(root) {
   }
 
   return {
+    ready,
     allowed,
     listProjects,
     getProject,

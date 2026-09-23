@@ -40,7 +40,8 @@ export default function localCms() {
         logger.info('Administration locale : http://localhost:4321/admin/');
       },
       'astro:server:setup': ({ server }) => {
-        const api = createApi(createStore(root));
+        // l'API charge les MÊMES modules que le site (règles des médias, schémas, listes) via Vite
+        const api = createApi(createStore(root, { load: (id) => server.ssrLoadModule(id) }));
         server.middlewares.use('/__cms', (req, res) => void api(req, res));
       },
     },

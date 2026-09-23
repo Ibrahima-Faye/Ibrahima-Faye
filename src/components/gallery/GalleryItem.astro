@@ -1,0 +1,160 @@
+---
+/**
+ * Une tuile de galerie (image ou vidéo) : ouvre la visionneuse.
+ * Le cadre a EXACTEMENT le ratio du média (`--r`) : jamais de recadrage, quelle que soit la grille.
+ */
+import { Picture } from 'astro:assets';
+import { useTranslations, type Locale } from '@/i18n';
+import type { Media } from '@/lib/media';
+import Icon from '@/components/ui/Icon.astro';
+
+interface Props {
+  media: Media;
+  /** Classe de placement : `gg-item` (grille historique) ou `gb-item` (blocs). */
+  placement: string;
+  /** Variables CSS de placement (span, alignement…). */
+  style: string;
+  /** Attribut `sizes` de l'image (largeur affichée selon l'écran). */
+  sizes: string;
+  eager?: boolean;
+  locale?: Locale;
+}
+
+const { media: m, placement, style, sizes, eager = false, locale = 'fr' } = Astro.props;
+const t = useTranslations(locale);
+---
+
+<figure
+  class={`gallery-item ${placement}`}
+  style={`--r:${m.ratio.toFixed(4)};${style}`}
+  data-reveal
+>
+  <button
+    type="button"
+    class="tile gg-tile"
+    data-lightbox-item
+    data-type={m.type}
+    data-src={m.type === 'image' ? m.fullSrc : m.src}
+    data-alt={m.alt}
+    data-caption={m.caption ?? ''}
+    data-poster={m.type === 'video' ? (m.poster?.url ?? '') : ''}
+    data-thumb={m.type === 'image' ? m.thumbSrc : (m.poster?.thumb ?? '')}
+    data-w={m.type === 'image' ? m.fullWidth : undefined}
+    data-h={m.type === 'image' ? m.fullHeight : undefined}
+    aria-label={`${t.lightbox.open} : ${m.alt}`}
+  >
+    {m.type === 'image' ? (
+      <Picture
+        src={m.src}
+        alt=""
+        formats={['avif', 'webp']}
+        widths={[400, 700, 1000, 1400, 2000]}
+        sizes={sizes}
+        loading={eager ? 'eager' : 'lazy'}
+        pictureAttributes={{ class: 'block size-full' }}
+        class="size-full"
+      />
+    ) : (
+      <>
+        <video
+          class="size-full"
+          src={m.src}
+          poster={m.poster?.url}
+          muted
+          playsinline
+          preload={m.poster ? 'none' : 'metadata'}
+          data-gallery-video
+          data-ratio-known={String(m.ratioKnown)}
+          tabindex="-1"
+          aria-hidden="true"
+        />
+        <span class="play" aria-hidden="true">
+          <Icon name="play" class="size-6" />
+        </span>
+      </>
+    )}
+    <span class="hint" aria-hidden="true">
+      <Icon name="expand" class="size-4" />
+    </span>
+  </button>
+  {m.caption && <figcaption>{m.caption}</figcaption>}
+</figure>
+
+<style>
+  /* Mise en page : src/styles/gallery-grid.css (grille, ratios d'origine). */
+
+  .tile {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: 0.4rem;
+    background: var(--color-navy-950);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06) inset;
+    cursor: zoom-in;
+    padding: 0;
+    border: 0;
+  }
+
+  .tile :global(img),
+  .tile video {
+    object-fit: cover; /* le cadre a déjà le ratio exact du média : pas de recadrage */
+    transition: transform 1.2s var(--ease-out-expo);
+  }
+
+  .tile:hover :global(img),
+  .tile:hover video {
+    transform: scale(1.035);
+  }
+
+  .hint {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    border: 1px solid rgb(200 169 255 / 0.4);
+    background: rgb(4 5 13 / 0.6);
+    backdrop-filter: blur(8px);
+    color: var(--color-lavender-100);
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+      opacity 0.4s,
+      transform 0.5s var(--ease-out-expo);
+  }
+
+  .tile:hover .hint,
+  .tile:focus-visible .hint {
+    opacity: 1;
+    transform: none;
+  }
+
+  .play {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    display: grid;
+    place-items: center;
+    width: 4rem;
+    height: 4rem;
+    padding-left: 0.2rem;
+    border-radius: 999px;
+    background: rgb(123 77 255 / 0.85);
+    color: var(--color-paper);
+    box-shadow: 0 10px 40px -8px rgb(123 77 255 / 0.9);
+    transition: transform 0.5s var(--ease-out-expo);
+  }
+
+  .tile:hover .play {
+    transform: scale(1.1);
+  }
+
+  figcaption {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--color-paper-muted);
+  }
+</style>

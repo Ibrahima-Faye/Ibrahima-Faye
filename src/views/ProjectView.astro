@@ -4,7 +4,7 @@ import { render } from 'astro:content';
 import { domainNumber } from '@/data/domains';
 import { format, localizedPath, useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
-import { getCover, getProjectMedia, projectFolder } from '@/lib/media';
+import { getCover, getProjectGallery, projectFolder } from '@/lib/media';
 import { getProjects, neighbours, projectUrl, type Project } from '@/lib/projects';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Gallery from '@/components/gallery/Gallery.astro';
@@ -20,9 +20,9 @@ const { locale, project } = Astro.props;
 const t = useTranslations(locale);
 const { data } = project;
 
-const [{ Content }, media, all] = await Promise.all([
+const [{ Content }, gallery, all] = await Promise.all([
   render(project),
-  getProjectMedia(project, {
+  getProjectGallery(project, {
     imageAlt: (n) => format(t.projects.imageAlt, { title: data.title, n }),
     videoAlt: (n) => format(t.projects.videoAlt, { title: data.title, n }),
   }),
@@ -249,19 +249,19 @@ const meta = [
     </section>
 
     <!-- Galerie -->
-    {media.length > 0 && (
+    {gallery.count > 0 && (
       <section class="pb-24 md:pb-36" aria-labelledby="gallery-title">
         <div class="container-x">
           <h2 id="gallery-title" class="display-lg mb-10 md:mb-14" data-split="lines">
             {t.projects.gallery}
           </h2>
-          <Gallery media={media} locale={locale} />
+          <Gallery blocks={gallery.blocks} locale={locale} />
         </div>
       </section>
     )}
 
     <!-- Emplacement de galerie : visible uniquement en développement, tant qu'il n'y a aucun média -->
-    {media.length === 0 && import.meta.env.DEV && (
+    {gallery.count === 0 && import.meta.env.DEV && (
       <section class="pb-24 md:pb-36" aria-labelledby="slot-title">
         <div class="container-x">
           <div class="border-mauve-300/30 rounded-[0.5rem] border border-dashed p-8 md:p-12">

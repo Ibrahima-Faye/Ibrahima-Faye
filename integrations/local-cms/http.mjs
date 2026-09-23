@@ -13,16 +13,6 @@ export class HttpError extends Error {
   }
 }
 
-export const MIME = {
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  png: 'image/png',
-  webp: 'image/webp',
-  avif: 'image/avif',
-  mp4: 'video/mp4',
-  webm: 'video/webm',
-};
-
 export function sendJson(res, status, data) {
   const body = JSON.stringify(data);
   res.writeHead(status, {

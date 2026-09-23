@@ -292,3 +292,10 @@ media:
 
 `span` : 3 = 1/4 · 4 = 1/3 · 6 = 1/2 · 8 = 2/3 · 9 = 3/4 · 12 = pleine largeur. Les médias se placent dans l'ordre de la
 liste, de gauche à droite. Chacun garde son ratio d'origine. Sur mobile, tout passe en pleine largeur.
+
+## Galerie en blocs (`blocks`, facultatif)
+
+Pour organiser la galerie en plusieurs groupes — média seul, grille (images et vidéos mélangées), carrousel,
+avant / après — avec des colonnes différentes sur ordinateur, tablette et mobile : champ `blocks`, décrit avec des
+exemples dans [`MODELE-DE-DONNEES.md`](MODELE-DE-DONNEES.md). Sans ce champ, la composition ci-dessus s'applique
+exactement comme avant.

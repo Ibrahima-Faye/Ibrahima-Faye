@@ -112,7 +112,7 @@ Tout est dans le dossier du projet, modifiable aussi à la main :
 
 ```
 src/content/projects/<projet>/
-├── project.md            ← fiche + composition de la galerie (champ `media`)
+├── project.md            ← fiche + composition de la galerie (champ `media`, ou blocs : champ `blocks`)
 ├── 01-facade.jpg         ← tes images et vidéos
 ├── 02-plan.png
 ├── film.webm
@@ -135,11 +135,22 @@ media:
     ratio: 16:9 # ratio d'une vidéo (écrit automatiquement)
 ```
 
+Une galerie peut aussi être organisée en **blocs** (média seul, grille, carrousel, avant / après) avec le champ `blocks` :
+voir [`MODELE-DE-DONNEES.md`](MODELE-DE-DONNEES.md). Sans ce champ, rien ne change. Tant que l'éditeur visuel des blocs
+n'existe pas, un projet en blocs affiche un bandeau dans l'onglet Galerie : la composition de cet onglet ne concerne
+alors que les médias placés dans aucun bloc.
+
 ## Suppressions et corbeille
 
 Supprimer un projet ou un média **déplace** les fichiers dans **`.trash/`** (à la racine du projet, ignoré par git).
 Pour récupérer quelque chose : remets le dossier ou le fichier à sa place dans `src/content/projects/`. Vide `.trash/`
 quand tu veux libérer de la place.
+
+## Historique des fiches
+
+Avant chaque réécriture d'un `project.md`, l'administration en garde la version précédente dans
+**`.cms/historique/<projet>/<date>.md`** (ignoré par git). Pour revenir en arrière : recopie ce fichier à la place de
+`project.md`. Un enregistrement **sans changement réel** n'écrit rien : le fichier reste identique à l'octet près.
 
 ## Sécurité
 
@@ -159,8 +170,9 @@ quand tu veux libérer de la place.
   l'ancienne adresse ne fonctionnera plus.
 - Les pages ouvertes du **site** se rechargent tout seules quand un fichier change (comportement normal d'Astro). La page
   `/admin`, elle, refuse ce rechargement pour ne jamais interrompre un envoi.
-- L'enregistrement réécrit `project.md` : les **commentaires** d'un fichier édité à la main sont perdus ; les champs
-  inconnus de l'administration sont conservés.
+- L'enregistrement ne change que les valeurs modifiées de `project.md` : les **commentaires**, les guillemets et l'ordre
+  des autres champs sont conservés, ainsi que les champs inconnus de l'administration. Les blocs (`blocks`) ne sont
+  jamais retirés implicitement.
 - Si `project.md` contient une erreur de syntaxe, le projet apparaît en rouge sur le tableau de bord avec le message.
 
 ## Pour les développeurs
@@ -173,6 +185,11 @@ quand tu veux libérer de la place.
 | Interface (TypeScript, sans framework)       | `src/cms/app/` · style : `src/cms/admin.css`  |
 | Modèle de composition (partagé avec le site) | `src/lib/gallery-layout.ts`                   |
 | Grille de la galerie (partagée avec le site) | `src/styles/gallery-grid.css`                 |
+| Schémas : projet, blocs, formats de médias   | `src/schemas/{project,blocks,media}.ts`       |
+| Règles des médias (affiches, couverture…)    | `src/lib/media-rules.ts`                      |
+| Galerie → blocs à afficher                   | `src/lib/gallery/normalize.ts`                |
+| Tests automatiques (`npm test`)              | `tests/`                                      |
 
-Le drag & drop utilise `sortablejs`, la lecture / écriture de `project.md` utilise `yaml` : deux dépendances de
-développement, jamais embarquées dans le site publié.
+L'API charge les **mêmes modules** que le site (schémas, règles, listes de catégories) par Vite (`ssrLoadModule`) :
+une règle modifiée s'applique partout. Le drag & drop utilise `sortablejs`, la lecture / écriture de `project.md`
+utilise `yaml`, les tests `vitest` : dépendances de développement, jamais embarquées dans le site publié.

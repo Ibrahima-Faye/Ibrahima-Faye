@@ -8,13 +8,17 @@
  */
 import Sortable from 'sortablejs';
 import { ALIGNS, SPAN_INFO, defaultSpan, type Align, type Span } from '@/lib/gallery-layout';
+import { acceptAttribute, formatLabels, kindOf } from '@/lib/media-rules';
 import { api, fileUrl, thumbUrl, upload } from '../api';
 import { itemRatio, type Editor } from '../editor-state';
 import type { GalleryItem } from '../types';
 import { confirmModal, describeRatio, formatBytes, h, icon, toast, type IconName } from '../ui';
 
-const ACCEPT = /\.(jpe?g|png|webp|avif|mp4|webm)$/i;
 const THUMB_WIDTH = 900;
+/** « JPG, PNG, WebP, AVIF · MP4, WebM » — formats acceptés (src/schemas/media.ts). */
+const FORMATS = `${formatLabels('image')} · ${formatLabels('video')}`;
+/** Même règle que le site ; les majuscules (« .JPG ») sont acceptées, le nom est normalisé à l'envoi. */
+const isAccepted = (name: string) => Boolean(kindOf(name) ?? kindOf(name.toLowerCase()));
 
 const PRESETS: { id: string; label: string }[] = [
   { id: '', label: 'Composition rapide…' },
@@ -76,7 +80,7 @@ export function mountGallery(host: HTMLElement, editor: Editor): () => void {
   const fileInput = h('input', {
     type: 'file',
     multiple: true,
-    accept: 'image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm',
+    accept: acceptAttribute(),
     hidden: true,
   });
   const canvas = h('div', { class: 'gg cms-canvas' });
@@ -85,11 +89,7 @@ export function mountGallery(host: HTMLElement, editor: Editor): () => void {
     { class: 'cms-empty' },
     icon('upload', 34),
     h('strong', null, 'Dépose tes images et tes vidéos ici'),
-    h(
-      'span',
-      null,
-      'JPG, PNG, WebP, AVIF · MP4, WebM — tous les ratios sont acceptés, rien n’est jamais recadré.',
-    ),
+    h('span', null, `${FORMATS} — tous les ratios sont acceptés, rien n’est jamais recadré.`),
     h(
       'button',
       { type: 'button', class: 'cms-btn is-primary', onclick: () => fileInput.click() },
@@ -117,6 +117,25 @@ export function mountGallery(host: HTMLElement, editor: Editor): () => void {
     h(
       'div',
       { class: 'cms-gal-main' },
+      // Projet mis en page en blocs (champ `blocks:`) : cette composition ne concerne que les médias non placés.
+      editor.hasBlocks() &&
+        h(
+          'div',
+          { class: 'cms-card cms-note cms-warn' },
+          icon('info', 18),
+          h(
+            'div',
+            null,
+            h('strong', null, 'Ce projet est organisé en blocs'),
+            h(
+              'p',
+              null,
+              'Sa galerie suit le champ ',
+              h('code', null, 'blocks'),
+              ' de project.md (conservé intact). Ici, l’ordre et les tailles ne s’appliquent qu’aux médias placés dans aucun bloc, affichés à la fin. L’éditeur visuel des blocs arrive avec l’étape « Éditeur de blocs ».',
+            ),
+          ),
+        ),
       h(
         'div',
         { class: 'cms-gal-toolbar' },
@@ -468,10 +487,10 @@ export function mountGallery(host: HTMLElement, editor: Editor): () => void {
 
   async function addFiles(list: FileList | File[]) {
     const files = [...list].filter((file) => {
-      const ok = ACCEPT.test(file.name);
+      const ok = isAccepted(file.name);
       if (!ok)
         toast(
-          `« ${file.name} » : format non pris en charge (JPG, PNG, WebP, AVIF, MP4, WebM).`,
+          `« ${file.name} » : format non pris en charge (${FORMATS.replace(' · ', ', ')}).`,
           'error',
           5200,
         );
@@ -734,7 +753,7 @@ export function mountGallery(host: HTMLElement, editor: Editor): () => void {
             'Importer…',
             h('input', {
               type: 'file',
-              accept: 'image/jpeg,image/png,image/webp,image/avif',
+              accept: acceptAttribute('image'),
               hidden: true,
               onchange: async (e: Event) => {
                 const input = e.target as HTMLInputElement;

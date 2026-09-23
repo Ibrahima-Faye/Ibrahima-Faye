@@ -24,6 +24,7 @@ export function createApi(store) {
       const parts = url.pathname.split('/').filter(Boolean).map(seg);
       const mutating = !['GET', 'HEAD'].includes(method);
       guard(req, { mutating });
+      await store.ready(); // règles et schémas partagés avec le site (à jour à chaque requête)
 
       // ---------- fichiers (images, vidéos, miniatures) ----------
       if ((parts[0] === 'thumb' || parts[0] === 'file') && parts.length === 3 && !mutating) {

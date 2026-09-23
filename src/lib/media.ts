@@ -2,21 +2,25 @@ import type { ImageMetadata } from 'astro';
 import type { CollectionEntry } from 'astro:content';
 import { getImage } from 'astro:assets';
 import { defaultSpan, DEFAULT_ALIGN, parseRatio, type Align, type Span } from './gallery-layout';
+import { baseOf, effectiveCover, mediaFiles, posterPairs } from './media-rules';
+import { normalizeGallery, type NormalizedBlock, type NormalizedItem } from './gallery/normalize';
 
 /**
  * Détection automatique des médias d'un projet.
  *
- * Convention (voir docs/AJOUTER-UN-PROJET.md) :
+ * Convention (voir docs/AJOUTER-UN-PROJET.md — règles : src/lib/media-rules.ts) :
  *   champ `cover`     → image principale choisie dans l'administration (n'importe quel fichier image)
  *   cover.*            → sinon, image principale par convention (exclue de la galerie)
  *   <nom>.mp4/.webm    → vidéo ; <nom>.jpg/png/webp/avif du MÊME nom = son affiche (poster)
  *   toute autre image  → galerie, triée par nom (image-01, image-02, …)
+ *   `blocks:`          → mise en page en blocs (src/schemas/blocks.ts) ; sans lui, composition historique
  *
  * Aucun recadrage : chaque média garde son ratio d'origine.
  */
 
 type Project = CollectionEntry<'projects'>;
 
+// Formats activés dans src/schemas/media.ts (un test vérifie que ces motifs correspondent).
 const imageModules = import.meta.glob<ImageMetadata>(
   '/src/content/projects/*/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP,AVIF}',
   { eager: true, import: 'default' },
@@ -36,7 +40,7 @@ export interface ImageMedia {
   caption?: string;
   /** largeur / hauteur */
   ratio: number;
-  /** Largeur dans la grille de 12 colonnes. */
+  /** Largeur dans la grille historique de 12 colonnes. */
   span: Span;
   align: Align;
   /** URL d'une version grand format (visionneuse), optimisée. */
@@ -65,15 +69,22 @@ export interface VideoMedia {
 
 export type Media = ImageMedia | VideoMedia;
 
+/** Élément de galerie prêt à afficher : sa place dans le bloc + le média résolu. */
+export interface GalleryItem extends NormalizedItem {
+  media: Media;
+}
+
+export interface GalleryBlock extends Omit<NormalizedBlock, 'items'> {
+  items: GalleryItem[];
+}
+
 /** Nom du dossier d'un projet, à partir du chemin de son project.md. */
 export function projectFolder(project: Project): string {
   const parts = (project.filePath ?? '').split('/');
   return parts[parts.length - 2] ?? project.id;
 }
 
-const basename = (file: string) => file.replace(/\.[^.]+$/, '');
 const filename = (path: string) => path.split('/').pop() ?? path;
-const natural = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
 
 function filesOf<T>(modules: Record<string, T>, folder: string): Map<string, T> {
   const prefix = `/src/content/projects/${folder}/`;
@@ -87,54 +98,59 @@ function filesOf<T>(modules: Record<string, T>, folder: string): Map<string, T> 
 /** Image de couverture : champ `cover`, sinon `cover.*`, sinon la première image du dossier. */
 export function getCover(project: Project): ImageMetadata | undefined {
   const images = filesOf(imageModules, projectFolder(project));
-  const chosen = project.data.cover ? images.get(project.data.cover) : undefined;
-  if (chosen) return chosen;
-  const cover = [...images.entries()].find(([file]) => basename(file).toLowerCase() === 'cover');
-  if (cover) return cover[1];
-  const first = [...images.keys()].sort(natural.compare)[0];
-  return first ? images.get(first) : undefined;
+  const file = effectiveCover(project.data.cover, mediaFiles(images.keys()));
+  return file ? images.get(file) : undefined;
 }
 
-/** Toute la galerie d'un projet, prête à afficher. */
-export async function getProjectMedia(
+/**
+ * Galerie d'un projet, en blocs prêts à afficher.
+ * Sans `blocks:` : un seul bloc « historique », identique à l'ancienne galerie.
+ */
+export async function getProjectGallery(
   project: Project,
   labels: { imageAlt: (n: number) => string; videoAlt: (n: number) => string },
-): Promise<Media[]> {
+): Promise<{ blocks: GalleryBlock[]; count: number }> {
   const folder = projectFolder(project);
   const images = filesOf(imageModules, folder);
   const videos = filesOf(videoModules, folder);
+  const files = mediaFiles([...images.keys(), ...videos.keys()]);
+  const { posterOf } = posterPairs(files);
   const settings = new Map(project.data.media.map((m) => [m.file, m]));
 
-  const videoNames = new Set([...videos.keys()].map((f) => basename(f).toLowerCase()));
-  const posters = new Map<string, ImageMetadata>();
-  const galleryImages: [string, ImageMetadata][] = [];
-
-  for (const [file, meta] of images) {
-    const name = basename(file).toLowerCase();
-    if (name === 'cover' && !settings.has(file)) continue; // sauf si l'administration l'a placé dans la galerie
-    if (videoNames.has(name)) {
-      posters.set(name, meta);
-      continue;
-    }
-    galleryImages.push([file, meta]);
+  const { blocks, issues } = normalizeGallery({
+    files,
+    media: project.data.media,
+    blocks: project.data.blocks,
+    unplaced: project.data.unplaced,
+  });
+  for (const issue of issues) {
+    console.warn(`[galerie] ${folder} — ${issue.message}`);
   }
 
-  const files: string[] = [...galleryImages.map(([f]) => f), ...videos.keys()];
-  // Fichiers cités dans `media:` d'abord (dans l'ordre donné), les autres ensuite, par nom.
-  const listed = project.data.media.map((m) => m.file).filter((f) => files.includes(f));
-  const rest = files.filter((f) => !listed.includes(f)).sort(natural.compare);
-  const ordered = [...new Set([...listed, ...rest])].filter((f) => !settings.get(f)?.hidden);
-
-  const result: Media[] = [];
+  // Un média est résolu une seule fois, même s'il apparaît dans plusieurs blocs.
+  // Numérotation des textes alternatifs par défaut : ordre de première apparition (identique à l'ancien).
+  const resolved = new Map<string, Promise<Media | undefined>>();
   let index = 0;
-  for (const file of ordered) {
-    index += 1;
+  const resolve = (file: string, legacySpan?: Span) => {
+    if (!resolved.has(file)) {
+      index += 1;
+      resolved.set(file, resolveMedia(file, index, legacySpan));
+    }
+    return resolved.get(file)!;
+  };
+
+  async function resolveMedia(
+    file: string,
+    n: number,
+    legacySpan?: Span,
+  ): Promise<Media | undefined> {
     const conf = settings.get(file);
     const image = images.get(file);
     const videoUrl = videos.get(file);
 
     if (videoUrl) {
-      const poster = posters.get(basename(file).toLowerCase());
+      const posterName = posterOf.get(file);
+      const poster = posterName ? images.get(posterName) : undefined;
       const declared = parseRatio(conf?.ratio);
       const ratio = declared ?? (poster ? poster.width / poster.height : 16 / 9);
       let posterInfo: VideoMedia['poster'];
@@ -145,40 +161,61 @@ export async function getProjectMedia(
         ]);
         posterInfo = { src: poster, url: optimized.src, thumb: thumb.src };
       }
-      result.push({
+      return {
         type: 'video',
         file,
         src: videoUrl,
         poster: posterInfo,
-        alt: conf?.alt ?? labels.videoAlt(index),
+        alt: conf?.alt ?? labels.videoAlt(n),
         caption: conf?.caption,
         ratio,
-        span: conf?.span ?? defaultSpan('video', ratio),
+        span: legacySpan ?? defaultSpan('video', ratio),
         align: conf?.align ?? DEFAULT_ALIGN,
         ratioKnown: Boolean(declared || poster),
-      });
-    } else if (image) {
+      };
+    }
+    if (image) {
       const [full, thumb] = await Promise.all([
         getImage({ src: image, width: Math.min(image.width, 2560), format: 'webp', quality: 85 }),
         getImage({ src: image, width: 240, format: 'webp' }),
       ]);
-      result.push({
+      return {
         type: 'image',
         file,
         src: image,
-        alt: conf?.alt ?? labels.imageAlt(index),
+        alt: conf?.alt ?? labels.imageAlt(n),
         caption: conf?.caption,
         ratio: image.width / image.height,
-        span: conf?.span ?? defaultSpan('image', image.width / image.height),
+        span: legacySpan ?? defaultSpan('image', image.width / image.height),
         align: conf?.align ?? DEFAULT_ALIGN,
         fullSrc: full.src,
         fullWidth: Number(full.attributes.width) || image.width,
         fullHeight: Number(full.attributes.height) || image.height,
         thumbSrc: thumb.src,
-      });
+      };
     }
+    return undefined;
   }
-  return result;
+
+  // Résolution dans l'ordre d'affichage (numérotation stable), puis attente groupée.
+  const pending = blocks.map((block) =>
+    block.items.map((item) => ({ item, media: resolve(item.file, item.legacySpan) })),
+  );
+  const out: GalleryBlock[] = [];
+  let count = 0;
+  for (const [i, block] of blocks.entries()) {
+    const items: GalleryItem[] = [];
+    for (const { item, media } of pending[i]!) {
+      const m = await media;
+      if (!m) continue;
+      // Légende propre à l'emplacement (blocs) ; sinon celle de `media:`.
+      items.push({ ...item, media: item.caption ? { ...m, caption: item.caption } : m });
+    }
+    if (!items.length) continue;
+    count += items.length;
+    out.push({ ...block, items });
+  }
+  return { blocks: out, count };
 }
 
 /* ------------------------------------------------------------------ *
@@ -204,6 +241,6 @@ export interface DomainMedia {
 
 export function getDomainMedia(slug: string): DomainMedia {
   const find = <T>(modules: Record<string, T>) =>
-    Object.entries(modules).find(([path]) => basename(filename(path)).toLowerCase() === slug)?.[1];
+    Object.entries(modules).find(([path]) => baseOf(filename(path)).toLowerCase() === slug)?.[1];
   return { image: find(domainImages), video: find(domainVideos) };
 }

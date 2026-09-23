@@ -1,4 +1,5 @@
 import type { Align, Span, SpanInfo } from '@/lib/gallery-layout';
+import type { Block } from '@/schemas/blocks';
 
 /** Vocabulaire du site, transmis par la page /admin (une seule source de vérité : src/data + src/i18n). */
 export interface Meta {
@@ -73,6 +74,9 @@ export interface ProjectData {
   coverAlt?: string;
   links?: ProjectLink[];
   media?: MediaEntry[];
+  /** Mise en page en blocs (src/schemas/blocks.ts). Conservée telle quelle par l'éditeur. */
+  blocks?: Block[];
+  unplaced?: 'append' | 'hide';
   draft?: boolean;
   [key: string]: unknown;
 }

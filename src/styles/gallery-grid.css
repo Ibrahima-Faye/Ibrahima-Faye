@@ -1,5 +1,6 @@
 /*
   Grille de la galerie — partagée par le site public (Gallery.astro) et l'éditeur de l'administration.
+  Composition historique (sans `blocks:`) ci-dessous ; blocs en fin de fichier.
   12 colonnes ; chaque média occupe `--span` colonnes ; sa hauteur vient de SON ratio (`--r`) : jamais recadré.
   Voir src/lib/gallery-layout.ts pour le vocabulaire (1 col = 3, ½ = 6, ¾ = 9, pleine largeur = 12).
 */
@@ -32,5 +33,104 @@
 @media (max-width: 639px) {
   .gg-item {
     grid-column: 1 / -1;
+  }
+}
+
+/* ==========================================================================
+   Blocs (champ `blocks:` de project.md — src/schemas/blocks.ts)
+   Colonnes par appareil : --cm (mobile < 640 px), --ct (tablette), --cd (≥ 1024 px).
+   Spans par appareil : --sm, --st, --sd (déjà bornés aux colonnes : jamais de débordement).
+   Chaque tuile garde le ratio de son média (.gg-tile) : aucune colonne ni span ne recadre.
+   ========================================================================== */
+.gb-stack {
+  display: grid;
+  gap: clamp(3rem, 7vw, 6rem);
+}
+
+.gb-content {
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
+}
+
+/* Pleine largeur : le bloc sort du conteneur de la page, d'un bord de l'écran à l'autre. */
+.gb-full {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+}
+
+.gb-title {
+  margin-bottom: 1.25rem;
+  font-size: clamp(1.15rem, 1.05rem + 0.6vw, 1.45rem);
+}
+
+.gb-full .gb-title,
+.gb-full .gb-caption,
+.gb-full .gb-notice {
+  padding-inline: clamp(1.25rem, 4.5vw, 4rem);
+}
+
+.gb-caption {
+  margin-top: 0.9rem;
+  font-size: 0.9rem;
+  color: var(--color-paper-muted);
+}
+
+/* Avertissement de repli (développement uniquement) */
+.gb-notice {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  border-left: 2px solid var(--color-mauve-400);
+  background: rgb(123 77 255 / 0.1);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-lavender-200);
+}
+
+.gb-grid {
+  --cols: var(--cm, 1);
+  --gap: clamp(0.5rem, 1.4vw, 1rem);
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: var(--gap);
+  align-items: start;
+}
+
+.gb-gap-none {
+  --gap: 0px;
+}
+
+.gb-gap-sm {
+  --gap: clamp(0.25rem, 0.7vw, 0.5rem);
+}
+
+.gb-gap-lg {
+  --gap: clamp(1rem, 2.6vw, 2rem);
+}
+
+.gb-item {
+  --s: var(--sm, 1);
+  grid-column: span var(--s);
+  align-self: var(--align, center);
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .gb-grid {
+    --cols: var(--ct, 2);
+  }
+
+  .gb-item {
+    --s: var(--st, 1);
+  }
+}
+
+@media (min-width: 1024px) {
+  .gb-grid {
+    --cols: var(--cd, 3);
+  }
+
+  .gb-item {
+    --s: var(--sd, 1);
   }
 }
