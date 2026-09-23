@@ -23,6 +23,8 @@ export interface ProjectSummary {
   cover?: string;
   coverV?: number;
   mediaCount: number;
+  /** Originaux dont la version web manque ou n'est plus à jour. */
+  webPending?: number;
   updatedAt: number;
   /** Renseigné si project.md est illisible (erreur de syntaxe…). */
   error?: string;
@@ -39,6 +41,38 @@ export interface FileInfo {
   poster?: string;
   /** Image : nom de la vidéo dont elle est l'affiche. */
   posterFor?: string;
+  /** Versions web (pipeline médias) : statut et caractéristiques. */
+  web?: WebInfo;
+}
+
+/** État des versions web d'un original (integrations/local-cms/media/pipeline.mjs). */
+export interface WebInfo {
+  /** ok · pending (à générer) · queued (en file) · running (en cours) · error */
+  status: 'ok' | 'pending' | 'queued' | 'running' | 'error';
+  progress?: number;
+  error?: string;
+  kind?: 'image' | 'video';
+  width?: number;
+  height?: number;
+  ratio?: number;
+  duration?: number;
+  audio?: boolean;
+  animated?: boolean;
+  vector?: boolean;
+  transcode?: string;
+  sizes?: Record<string, number>;
+  outputs?: Record<string, string>;
+  /** Versions de plus de 25 Mio : 'remote' (stockage externe, hors git et hors build). */
+  storage?: Record<string, 'local' | 'remote'>;
+  source?: {
+    width?: number;
+    height?: number;
+    codec?: string;
+    fps?: number;
+    hdr?: boolean;
+    format?: string;
+    size?: number;
+  };
 }
 
 export interface MediaEntry {

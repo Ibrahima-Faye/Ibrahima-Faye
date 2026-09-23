@@ -2,7 +2,8 @@ import type { ImageMetadata } from 'astro';
 import type { CollectionEntry } from 'astro:content';
 import { getImage } from 'astro:assets';
 import { defaultSpan, DEFAULT_ALIGN, parseRatio, type Align, type Span } from './gallery-layout';
-import { baseOf, effectiveCover, mediaFiles, posterPairs } from './media-rules';
+import { baseOf, effectiveCover, mediaFiles } from './media-rules';
+import { resolveOutputUrl, type MediaStorage } from './media-storage';
 import { normalizeGallery, type NormalizedBlock, type NormalizedItem } from './gallery/normalize';
 
 /**
@@ -20,22 +21,49 @@ import { normalizeGallery, type NormalizedBlock, type NormalizedItem } from './g
 
 type Project = CollectionEntry<'projects'>;
 
-// Formats activés dans src/schemas/media.ts (un test vérifie que ces motifs correspondent).
-const imageModules = import.meta.glob<ImageMetadata>(
-  '/src/content/projects/*/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP,AVIF}',
+/*
+  Le site n'utilise QUE les versions web produites par le pipeline médias (integrations/local-cms/media/),
+  décrites dans <projet>/media.json : les originaux (HEIC, MOV 4K, PNG de 20 Mo…) restent sur la machine
+  et ne peuvent jamais se retrouver dans le site publié.
+*/
+interface WebEntry {
+  status: 'ok' | 'error';
+  kind: 'image' | 'video';
+  width: number;
+  height: number;
+  ratio?: number;
+  vector?: boolean;
+  animated?: boolean;
+  outputs: { image?: string; thumb?: string; video?: string; mobile?: string; poster?: string };
+  /** Versions de plus de 25 Mio : 'remote' (stockage externe, hors git et hors build). */
+  storage?: Partial<Record<keyof WebEntry['outputs'], MediaStorage>>;
+}
+
+/** URL publique du stockage externe (Cloudflare R2…) — voir .env.example et docs/MEDIAS.md. */
+const REMOTE_BASE = String(import.meta.env.PUBLIC_MEDIA_BASE_URL ?? '').trim();
+
+const manifests = import.meta.glob<{ items: Record<string, WebEntry> }>(
+  '/src/content/projects/*/media.json',
   { eager: true, import: 'default' },
 );
-
-const videoModules = import.meta.glob<string>('/src/content/projects/*/*.{mp4,webm,MP4,WEBM}', {
-  eager: true,
-  import: 'default',
-  query: '?url',
-});
+/** Images maîtresses et affiches (le site en tire AVIF / WebP / tailles responsive). */
+const webImages = import.meta.glob<ImageMetadata>(
+  '/src/content/projects/*/_web/*/{image,poster}.{jpg,webp}',
+  { eager: true, import: 'default' },
+);
+/** Vidéos web et SVG nettoyés (servis tels quels). Les versions de `distant/` n'y sont pas : jamais dans le build. */
+const webUrls = import.meta.glob<string>(
+  '/src/content/projects/*/_web/*/{video,mobile,image}.{mp4,svg}',
+  { eager: true, import: 'default', query: '?url' },
+);
 
 export interface ImageMedia {
   type: 'image';
   file: string;
-  src: ImageMetadata;
+  /** Image matricielle (Astro en tire AVIF / WebP / tailles responsive). */
+  src?: ImageMetadata;
+  /** Image vectorielle (SVG nettoyé) : URL servie telle quelle. */
+  svg?: string;
   alt: string;
   caption?: string;
   /** largeur / hauteur */
@@ -55,8 +83,12 @@ export interface ImageMedia {
 export interface VideoMedia {
   type: 'video';
   file: string;
-  /** URL du fichier vidéo. */
+  /** URL de la vidéo web (MP4 H.264). */
   src: string;
+  /** Version plus légère pour les petits écrans (si l'original est grand). */
+  mobileSrc?: string;
+  /** GIF animé converti en vidéo : lecture automatique, muette, en boucle. */
+  animated?: boolean;
   poster?: { src: ImageMetadata; url: string; thumb: string };
   alt: string;
   caption?: string;
@@ -86,20 +118,42 @@ export function projectFolder(project: Project): string {
 
 const filename = (path: string) => path.split('/').pop() ?? path;
 
-function filesOf<T>(modules: Record<string, T>, folder: string): Map<string, T> {
-  const prefix = `/src/content/projects/${folder}/`;
-  const files = new Map<string, T>();
-  for (const [path, value] of Object.entries(modules)) {
-    if (path.startsWith(prefix)) files.set(filename(path), value);
-  }
-  return files;
+/** Versions web prêtes d'un projet (manifeste), et accès à leurs fichiers. */
+function webAssets(folder: string) {
+  const base = `/src/content/projects/${folder}/`;
+  const items = manifests[`${base}media.json`]?.items ?? {};
+  const ready = new Map(Object.entries(items).filter(([, e]) => e.status === 'ok'));
+  return {
+    ready,
+    /** Fichiers d'origine ayant une version web (même nom : identifiant stable du média). */
+    files: mediaFiles(ready.keys()),
+    image: (rel?: string) => (rel ? webImages[base + rel] : undefined),
+    url: (rel?: string) => (rel ? webUrls[base + rel] : undefined),
+    /** URL d'une version vidéo, locale ou distante (undefined : indisponible dans ce contexte). */
+    video: (file: string, entry: WebEntry, key: 'video' | 'mobile') => {
+      const output = entry.outputs[key];
+      if (!output) return undefined;
+      return resolveOutputUrl({
+        storage: entry.storage?.[key],
+        folder,
+        file,
+        output,
+        base: REMOTE_BASE,
+        dev: import.meta.env.DEV,
+        localUrl: webUrls[base + output],
+      });
+    },
+  };
 }
 
-/** Image de couverture : champ `cover`, sinon `cover.*`, sinon la première image du dossier. */
+/** Image de couverture : champ `cover`, sinon `cover.*`, sinon la première image du dossier (version web). */
 export function getCover(project: Project): ImageMetadata | undefined {
-  const images = filesOf(imageModules, projectFolder(project));
-  const file = effectiveCover(project.data.cover, mediaFiles(images.keys()));
-  return file ? images.get(file) : undefined;
+  const web = webAssets(projectFolder(project));
+  const images = mediaFiles(
+    [...web.ready].filter(([, e]) => e.kind === 'image' && !e.vector).map(([n]) => n),
+  );
+  const file = effectiveCover(project.data.cover, images);
+  return file ? web.image(web.ready.get(file)?.outputs.image) : undefined;
 }
 
 /**
@@ -111,11 +165,20 @@ export async function getProjectGallery(
   labels: { imageAlt: (n: number) => string; videoAlt: (n: number) => string },
 ): Promise<{ blocks: GalleryBlock[]; count: number }> {
   const folder = projectFolder(project);
-  const images = filesOf(imageModules, folder);
-  const videos = filesOf(videoModules, folder);
-  const files = mediaFiles([...images.keys(), ...videos.keys()]);
-  const { posterOf } = posterPairs(files);
+  const web = webAssets(folder);
+  const files = web.files;
   const settings = new Map(project.data.media.map((m) => [m.file, m]));
+
+  // fichiers cités par la fiche mais sans version web : signalés (`npm run medias` les génère)
+  const cited = [
+    ...project.data.media.map((m) => m.file),
+    ...(project.data.blocks ?? []).flatMap((b) => (b.items ?? []).map((i) => i.file)),
+  ];
+  const missing = [...new Set(cited)].filter((f) => !web.ready.has(f));
+  if (missing.length)
+    console.warn(
+      `[médias] ${folder} — sans version web (lancer « npm run medias ») : ${missing.join(', ')}`,
+    );
 
   const { blocks, issues } = normalizeGallery({
     files,
@@ -145,14 +208,23 @@ export async function getProjectGallery(
     legacySpan?: Span,
   ): Promise<Media | undefined> {
     const conf = settings.get(file);
-    const image = images.get(file);
-    const videoUrl = videos.get(file);
+    const entry = web.ready.get(file);
+    if (!entry) return undefined;
 
-    if (videoUrl) {
-      const posterName = posterOf.get(file);
-      const poster = posterName ? images.get(posterName) : undefined;
+    if (entry.kind === 'video') {
+      const videoUrl = web.video(file, entry, 'video');
+      const mobileUrl = web.video(file, entry, 'mobile');
+      const poster = web.image(entry.outputs.poster);
+      if (!videoUrl) {
+        // version principale sur le stockage externe, non configuré : repli sur la version mobile
+        // (publiée avec le site), sinon sur l'affiche — le média reste visible
+        console.warn(
+          `[médias] ${folder} — ${file} : vidéo sur stockage distant (PUBLIC_MEDIA_BASE_URL non défini) → ${mobileUrl ? 'version mobile' : poster ? 'affiche seule' : 'non affichée'}`,
+        );
+        if (!mobileUrl) return poster ? imageMedia(file, poster, n, legacySpan) : undefined;
+      }
       const declared = parseRatio(conf?.ratio);
-      const ratio = declared ?? (poster ? poster.width / poster.height : 16 / 9);
+      const ratio = declared ?? entry.ratio ?? entry.width / entry.height;
       let posterInfo: VideoMedia['poster'];
       if (poster) {
         const [optimized, thumb] = await Promise.all([
@@ -164,37 +236,68 @@ export async function getProjectGallery(
       return {
         type: 'video',
         file,
-        src: videoUrl,
+        src: (videoUrl ?? mobileUrl)!,
+        mobileSrc: videoUrl ? mobileUrl : undefined,
+        animated: entry.animated,
         poster: posterInfo,
         alt: conf?.alt ?? labels.videoAlt(n),
         caption: conf?.caption,
         ratio,
         span: legacySpan ?? defaultSpan('video', ratio),
         align: conf?.align ?? DEFAULT_ALIGN,
-        ratioKnown: Boolean(declared || poster),
+        ratioKnown: true, // dimensions mesurées par le pipeline
       };
     }
-    if (image) {
-      const [full, thumb] = await Promise.all([
-        getImage({ src: image, width: Math.min(image.width, 2560), format: 'webp', quality: 85 }),
-        getImage({ src: image, width: 240, format: 'webp' }),
-      ]);
+    if (entry.vector) {
+      const svg = web.url(entry.outputs.image);
+      if (!svg) return undefined;
+      const ratio = entry.ratio ?? entry.width / entry.height;
       return {
         type: 'image',
         file,
-        src: image,
+        svg,
         alt: conf?.alt ?? labels.imageAlt(n),
         caption: conf?.caption,
-        ratio: image.width / image.height,
-        span: legacySpan ?? defaultSpan('image', image.width / image.height),
+        ratio,
+        span: legacySpan ?? defaultSpan('image', ratio),
         align: conf?.align ?? DEFAULT_ALIGN,
-        fullSrc: full.src,
-        fullWidth: Number(full.attributes.width) || image.width,
-        fullHeight: Number(full.attributes.height) || image.height,
-        thumbSrc: thumb.src,
+        fullSrc: svg,
+        fullWidth: entry.width,
+        fullHeight: entry.height,
+        thumbSrc: svg,
       };
     }
-    return undefined;
+    const image = web.image(entry.outputs.image);
+    return image ? imageMedia(file, image, n, legacySpan) : undefined;
+  }
+
+  /** Image matricielle prête à afficher (grille + visionneuse). */
+  async function imageMedia(
+    file: string,
+    image: ImageMetadata,
+    n: number,
+    legacySpan?: Span,
+  ): Promise<ImageMedia> {
+    const conf = settings.get(file);
+    const [full, thumb] = await Promise.all([
+      // visionneuse : jusqu'à 3840 px (écrans 4K), en WebP
+      getImage({ src: image, width: Math.min(image.width, 3840), format: 'webp', quality: 85 }),
+      getImage({ src: image, width: 240, format: 'webp' }),
+    ]);
+    return {
+      type: 'image',
+      file,
+      src: image,
+      alt: conf?.alt ?? labels.imageAlt(n),
+      caption: conf?.caption,
+      ratio: image.width / image.height,
+      span: legacySpan ?? defaultSpan('image', image.width / image.height),
+      align: conf?.align ?? DEFAULT_ALIGN,
+      fullSrc: full.src,
+      fullWidth: Number(full.attributes.width) || image.width,
+      fullHeight: Number(full.attributes.height) || image.height,
+      thumbSrc: thumb.src,
+    };
   }
 
   // Résolution dans l'ordre d'affichage (numérotation stable), puis attente groupée.

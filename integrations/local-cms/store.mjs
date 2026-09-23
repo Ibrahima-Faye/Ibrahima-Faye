@@ -23,6 +23,14 @@ import path from 'node:path';
 import YAML from 'yaml';
 import sharp from 'sharp';
 import { HttpError } from './http.mjs';
+import {
+  readManifest,
+  retireOutputs,
+  staleFiles,
+  listOriginals,
+  REMOTE_DIR,
+  WEB_DIR,
+} from './media/pipeline.mjs';
 
 const MAX_UPLOAD = 2 * 1024 * 1024 * 1024; // 2 Go
 const HISTORY_EVERY_MS = 2 * 60 * 1000; // au plus une copie d'historique toutes les 2 min par projet
@@ -94,7 +102,11 @@ const stamp = () => new Date().toISOString().replace(/[:.]/g, '-');
  * @param {string} root racine du projet
  * @param {{ load: (id: string) => Promise<any> }} options `load` charge un module du site (Vite `ssrLoadModule`)
  */
-export function createStore(root, { load }) {
+/**
+ * @param {{ load: (id: string) => Promise<any>, jobs?: ReturnType<typeof import('./media/jobs.mjs').createJobs> }} options
+ *   `jobs` : file du pipeline médias (optimisation automatique après chaque envoi).
+ */
+export function createStore(root, { load, jobs = undefined }) {
   const projectsDir = path.join(root, 'src/content/projects');
   const trashDir = path.join(root, '.trash');
   const historyDir = path.join(root, '.cms/historique');
@@ -396,6 +408,47 @@ export function createStore(root, { load }) {
       if (posterFor.has(info.name)) info.posterFor = posterFor.get(info.name);
       if (posterOf.has(info.name)) info.poster = posterOf.get(info.name);
     }
+    // versions web (pipeline médias) : statut, dimensions, poids — et dimensions des formats que sharp ne lit pas (HEIC)
+    const manifest = await readManifest(dir);
+    const { stale } = await staleFiles(dir, manifest, names);
+    const running = jobs?.status(slug) ?? {};
+    for (const info of infos) {
+      const entry = manifest.items[info.name];
+      const job = running[info.name];
+      info.web = {
+        status:
+          job && (job.state === 'queued' || job.state === 'running')
+            ? job.state
+            : entry?.status === 'error'
+              ? 'error'
+              : stale.includes(info.name)
+                ? 'pending'
+                : 'ok',
+        ...(job?.state === 'running' ? { progress: job.progress } : {}),
+        ...(entry?.status === 'ok'
+          ? {
+              kind: entry.kind,
+              width: entry.width,
+              height: entry.height,
+              ratio: entry.ratio,
+              duration: entry.duration,
+              audio: entry.audio,
+              animated: entry.animated,
+              vector: entry.vector,
+              transcode: entry.transcode,
+              sizes: entry.sizes,
+              outputs: entry.outputs,
+              storage: entry.storage,
+              source: entry.source,
+            }
+          : {}),
+        ...(entry?.status === 'error' ? { error: entry.error } : {}),
+      };
+      if (!info.width && entry?.source?.width) {
+        info.width = entry.source.width;
+        info.height = entry.source.height;
+      }
+    }
     return infos.sort((a, b) => natural.compare(a.name, b.name));
   }
 
@@ -448,6 +501,13 @@ export function createStore(root, { load }) {
               ? Math.round((await stat(path.join(projectsDir, slug, cover))).mtimeMs)
               : undefined,
             mediaCount: files.filter((f) => !posterFor.has(f.name)).length,
+            webPending: (
+              await staleFiles(
+                path.join(projectsDir, slug),
+                await readManifest(path.join(projectsDir, slug)),
+                await listOriginals(path.join(projectsDir, slug)),
+              )
+            ).stale.length,
             updatedAt: Math.round(st.mtimeMs),
           };
         } catch (error) {
@@ -610,6 +670,8 @@ export function createStore(root, { load }) {
       await unlink(tmp).catch(() => {});
       throw error;
     }
+    // versions web générées en tâche de fond ; une nouvelle affiche régénère aussi l'affiche de sa vidéo
+    jobs?.enqueue(slug, poster ? [target, assertFileName(String(poster))] : [target]);
     const files = await listFiles(slug);
     return files.find((f) => f.name === target);
   }
@@ -631,7 +693,41 @@ export function createStore(root, { load }) {
         }
       }
     }
+    // leurs versions web suivent dans la corbeille (rien n'est effacé)
+    for (const r of removed) await retireOutputs(dir, r, path.join(trashDir, `${slug}-medias`));
     return { removed };
+  }
+
+  /* ------------------------------------------------------------------ pipeline médias */
+  /** Lance l'optimisation : fichiers donnés, sinon tout ce qui manque ou a changé ; `force` : régénérer. */
+  async function optimize(slug, { files, force = false } = {}) {
+    const dir = dirOf(slug);
+    const names = await listOriginals(dir);
+    const { stale } = await staleFiles(dir, await readManifest(dir), names);
+    const todo = (files?.length ? files.map(assertFileName) : force ? names : stale).filter((n) =>
+      names.includes(n),
+    );
+    if (!jobs) throw new HttpError(503, 'Pipeline médias indisponible.');
+    jobs.enqueue(slug, todo, { force });
+    return { queued: todo };
+  }
+
+  function optimizeStatus(slug) {
+    assertSlug(slug);
+    return { busy: jobs?.busy(slug) ?? false, files: jobs?.status(slug) ?? {} };
+  }
+
+  /** Une version web : _web/<fichier>/<sortie> (vidéo MP4 pour lire un MOV, affiche…). */
+  function webPath(slug, file, output) {
+    const name = assertFileName(file);
+    const out = assertFileName(output);
+    // versions de plus de 25 Mio : copie locale rangée dans distant/ (stockage externe)
+    const p = [
+      path.join(dirOf(slug), WEB_DIR, name, out),
+      path.join(dirOf(slug), WEB_DIR, name, REMOTE_DIR, out),
+    ].find((candidate) => existsSync(candidate));
+    if (!p) throw new HttpError(404, 'Version web introuvable.');
+    return { path: p, mime: m.rules.mimeOf(out) };
   }
 
   /* ------------------------------------------------------------------ lecture des fichiers */
@@ -644,9 +740,21 @@ export function createStore(root, { load }) {
 
   /** Miniature WebP mise en cache (les originaux peuvent peser plusieurs dizaines de Mo). */
   async function thumbnail(slug, file, width) {
-    const src = mediaPath(slug, file);
-    if (src.kind !== 'image') throw new HttpError(400, 'Pas une image.');
+    const media = mediaPath(slug, file);
     const w = Math.min(2400, Math.max(64, Math.round(width) || 480));
+    // source : l'original si sharp sait le lire, sinon la version web (HEIC → image maîtresse, vidéo → affiche)
+    const entry = (await readManifest(dirOf(slug))).items[file];
+    const web =
+      entry?.status === 'ok'
+        ? path.join(
+            dirOf(slug),
+            entry.kind === 'video' ? entry.outputs.poster : entry.outputs.image,
+          )
+        : undefined;
+    const readable = media.kind === 'image' && !/.(heic|heif)$/i.test(file);
+    const src = { path: readable ? media.path : web };
+    if (!src.path || !existsSync(src.path))
+      throw new HttpError(404, 'Miniature indisponible (version web pas encore générée).');
     const st = await stat(src.path);
     const key = createHash('sha1')
       .update(`${src.path}:${st.mtimeMs}:${st.size}:${w}`)
@@ -677,5 +785,8 @@ export function createStore(root, { load }) {
     deleteMedia,
     mediaPath,
     thumbnail,
+    optimize,
+    optimizeStatus,
+    webPath,
   };
 }

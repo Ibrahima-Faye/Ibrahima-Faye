@@ -21,6 +21,8 @@ export function itemRatio(item: GalleryItem, files: FileInfo[]): number {
   if (item.kind === 'image') return item.width && item.height ? item.width / item.height : 1.5;
   const declared = parseRatio(item.ratio);
   if (declared) return declared;
+  // dimensions mesurées par le pipeline médias (vidéo web)
+  if (item.width && item.height) return item.width / item.height;
   const poster = files.find((f) => f.name === item.poster);
   return poster?.width && poster.height ? poster.width / poster.height : 16 / 9;
 }
@@ -139,6 +141,24 @@ export class Editor {
     this.items.push(item);
     this.touch();
     return item;
+  }
+
+  /**
+   * Nouvelles informations sur les fichiers (ex. versions web générées) : dimensions et affiches mises à jour,
+   * sans rien modifier dans la fiche (aucun enregistrement déclenché).
+   */
+  updateFiles(files: FileInfo[]) {
+    this.files = files;
+    const byName = new Map(files.map((f) => [f.name, f]));
+    for (const item of this.items) {
+      const file = byName.get(item.file);
+      if (!file) continue;
+      item.width = file.width;
+      item.height = file.height;
+      item.poster = file.poster;
+      item.size = file.size;
+    }
+    this.emit();
   }
 
   setPoster(video: string, poster: FileInfo) {

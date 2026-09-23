@@ -34,25 +34,31 @@ export function formatOf(name: string): MediaFormat | undefined {
   return byExt.get(ext.toLowerCase());
 }
 
-/** Type d'un fichier pris en charge aujourd'hui (`null` : ignoré, ou format pas encore activé). */
+/** Type d'un fichier pris en charge (`null` : ce n'est pas un média). */
 export function kindOf(name: string): MediaKind | null {
-  const format = formatOf(name);
-  return format?.enabled ? format.kind : null;
+  return formatOf(name)?.kind ?? null;
 }
+
+/**
+ * Formats qu'un navigateur affiche tels quels, sans conversion : le site peut s'en servir en repli, en local,
+ * tant que le pipeline n'a pas produit la version web (HEIC, MOV, SVG, GIF… attendent leur version web).
+ */
+const BROWSER_READY = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'mp4', 'webm']);
+export const isBrowserReady = (name: string) => BROWSER_READY.has(formatOf(name)?.ext ?? '');
 
 export const mimeOf = (name: string) => formatOf(name)?.mime ?? 'application/octet-stream';
 
-export const enabledFormats = (kind?: MediaKind): MediaFormat[] =>
-  MEDIA_FORMATS.filter((f) => f.enabled && (!kind || f.kind === kind));
+export const supportedFormats = (kind?: MediaKind): MediaFormat[] =>
+  MEDIA_FORMATS.filter((f) => !kind || f.kind === kind);
 
 /** Valeur de l'attribut `accept` d'un champ fichier. */
 export const acceptAttribute = (kind?: MediaKind) =>
-  [...new Set(enabledFormats(kind).map((f) => f.mime))].join(',');
+  [...new Set(supportedFormats(kind).flatMap((f) => [f.mime, `.${f.ext}`]))].join(',');
 
 /** « JPG, PNG, WebP, AVIF » — pour les messages. */
 export const formatLabels = (kind?: MediaKind) =>
-  enabledFormats(kind)
-    .filter((f) => f.ext !== 'jpeg')
+  supportedFormats(kind)
+    .filter((f) => f.ext !== 'jpeg' && f.ext !== 'heif')
     .map((f) => f.label)
     .join(', ');
 

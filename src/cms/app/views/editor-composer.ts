@@ -18,10 +18,10 @@ import { resolveColumns, resolvePerView, resolveSpan } from '@/lib/gallery/norma
 import { acceptAttribute, formatLabels, kindOf } from '@/lib/media-rules';
 import { isKnownBlockType, type Block, type BlockItem, type Device } from '@/schemas/blocks';
 import * as ops from '../blocks-ops';
-import { api, fileUrl, thumbUrl, upload } from '../api';
+import { api, fileUrl, thumbUrl, upload, webUrl } from '../api';
 import { itemRatio, type Editor } from '../editor-state';
 import { captureFrame, probeVideo } from '../media-probe';
-import type { GalleryItem } from '../types';
+import type { FileInfo, GalleryItem, WebInfo } from '../types';
 import { confirmModal, describeRatio, formatBytes, h, icon, toast, type IconName } from '../ui';
 import { mountGallery } from './editor-gallery';
 
@@ -146,37 +146,39 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
     return item ? itemRatio(item, editor.files) : 1.5;
   };
 
+  const fileInfo = (name: string): FileInfo | undefined =>
+    editor.files.find((f) => f.name === name);
+  const webOf = (name: string): WebInfo | undefined => fileInfo(name)?.web;
+  /** Version de la vignette : change quand la version web est régénérée (cache du navigateur). */
+  const webV = (name: string) => {
+    const w = webOf(name);
+    return w?.status === 'ok' ? Object.values(w.sizes ?? {}).reduce((a, b) => a + b, 0) : 0;
+  };
+
   function mediaEl(file: string, width: number): HTMLElement {
     const item = editor.item(file);
     if (!item) return h('div', { class: 'cmp-missing' }, icon('info', 18), 'Fichier introuvable');
-    if (item.kind === 'image' || item.poster) {
+    const web = webOf(file);
+    const needsWeb = /\.(heic|heif)$/i.test(file) || (item.kind === 'video' && !item.poster);
+    if (needsWeb && web?.status !== 'ok') {
+      // HEIC, MOV… : aperçu disponible dès que la version web est prête
+      return h(
+        'div',
+        { class: 'cmp-missing is-waiting' },
+        icon(item.kind === 'video' ? 'video' : 'image', 18),
+        web?.status === 'error' ? 'Version web en erreur' : 'Aperçu en préparation…',
+      );
+    }
+    if (item.kind === 'image' || item.poster || web?.status === 'ok') {
+      const source = item.kind === 'image' ? item.file : (item.poster ?? item.file);
       return h('img', {
-        src: thumbUrl(slug, item.kind === 'image' ? item.file : item.poster!, width, item.v),
+        src: thumbUrl(slug, source, width, item.v + webV(file)),
         alt: '',
         loading: 'lazy',
         draggable: false,
       });
     }
-    const video = h('video', {
-      src: fileUrl(slug, item.file, item.v),
-      muted: true,
-      preload: 'metadata',
-      playsinline: true,
-    });
-    if (!item.ratio) {
-      // ratio inconnu : lu une fois, puis enregistré (comme dans l'éditeur simple)
-      video.addEventListener(
-        'loadedmetadata',
-        () => {
-          if (!video.videoWidth) return;
-          item.ratio = `${video.videoWidth}:${video.videoHeight}`;
-          editor.touch();
-          renderStage();
-        },
-        { once: true },
-      );
-    }
-    return video;
+    return h('div', { class: 'cmp-missing' }, icon('video', 18), 'Aperçu indisponible');
   }
 
   /* ------------------------------------------------------------------ médiathèque */
@@ -216,6 +218,7 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
             item.kind === 'video' && h('span', { class: 'cmp-kind' }, icon('play', 12)),
             item.file === cover &&
               h('span', { class: 'cmp-cover', title: 'Couverture' }, icon('star', 12)),
+            webBadge(item.file),
           ),
           hasBlocks &&
             h(
@@ -233,6 +236,7 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
         h('h3', null, 'Médiathèque'),
         h('span', { class: 'cms-muted' }, String(galleryFiles().length)),
       ),
+      optimizeBar() ?? '',
       h(
         'button',
         {
@@ -274,6 +278,93 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
         },
       });
     }
+  }
+
+  /* ------------------------------------------------------------------ versions web (pipeline médias) */
+  const STATUS_LABEL: Record<WebInfo['status'], string> = {
+    ok: 'Optimisé',
+    pending: 'À optimiser',
+    queued: 'En file d’attente',
+    running: 'Optimisation en cours',
+    error: 'Erreur d’optimisation',
+  };
+
+  function webBadge(name: string) {
+    const web = webOf(name);
+    if (!web || web.status === 'ok') return null;
+    const text =
+      web.status === 'running'
+        ? `${Math.round((web.progress ?? 0) * 100)} %`
+        : web.status === 'error'
+          ? '!'
+          : '…';
+    return h(
+      'span',
+      {
+        class: `cmp-web is-${web.status}`,
+        title: STATUS_LABEL[web.status] + (web.error ? ` : ${web.error}` : ''),
+      },
+      text,
+    );
+  }
+
+  /** Originaux sans version web à jour (hors affiches de vidéos, traitées elles aussi). */
+  const notReady = () => editor.files.filter((f) => f.web && f.web.status !== 'ok');
+
+  function optimizeBar() {
+    const waiting = notReady();
+    if (!waiting.length) return null;
+    const busy = waiting.some((f) => f.web?.status === 'queued' || f.web?.status === 'running');
+    const errors = waiting.filter((f) => f.web?.status === 'error').length;
+    return h(
+      'div',
+      { class: 'cmp-optimize' },
+      h(
+        'span',
+        null,
+        busy
+          ? `Optimisation : ${waiting.length} fichier${waiting.length > 1 ? 's' : ''} en cours ou en attente…`
+          : `${waiting.length} fichier${waiting.length > 1 ? 's' : ''} sans version web${errors ? ` (${errors} en erreur)` : ''}.`,
+      ),
+      !busy &&
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'cms-btn is-ghost',
+            onclick: () => void startOptimize(waiting.map((f) => f.name)),
+          },
+          'Optimiser maintenant',
+        ),
+    );
+  }
+
+  async function startOptimize(files: string[], force = false) {
+    try {
+      await api.optimize(slug, { files, force });
+      await refreshFiles();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Optimisation impossible.', 'error');
+    }
+  }
+
+  /** Relit les fichiers (statut des versions web, dimensions) et redessine ce qui en dépend. */
+  let polling = 0;
+  async function refreshFiles() {
+    try {
+      const detail = await api.get(slug);
+      editor.updateFiles(detail.files);
+    } catch {
+      return; // réseau : nouvel essai au prochain passage
+    }
+    renderLibrary();
+    renderStage();
+    if (selection?.kind === 'file') renderInspector();
+    const active = notReady().some(
+      (f) => f.web?.status === 'queued' || f.web?.status === 'running',
+    );
+    clearTimeout(polling);
+    if (active) polling = window.setTimeout(() => void refreshFiles(), 1500);
   }
 
   library.addEventListener('click', (e) => {
@@ -1354,17 +1445,27 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
     const uses = ops.usage(blocks()).get(item.file) ?? 0;
     const target = lastBlock ? findBlock(lastBlock) : undefined;
     const isCover = editor.coverFile() === item.file;
+    const web = webOf(item.file);
+    const ready = web?.status === 'ok';
     const preview =
       item.kind === 'video'
         ? h('video', {
             class: 'cms-insp-video',
-            src: fileUrl(slug, item.file, item.v),
+            // la version web (H.264) se lit partout ; l'original (MOV HEVC…) pas toujours
+            src: ready
+              ? webUrl(slug, item.file, 'video.mp4', webV(item.file))
+              : fileUrl(slug, item.file, item.v),
+            poster: ready ? webUrl(slug, item.file, 'poster.jpg', webV(item.file)) : undefined,
             controls: true,
             preload: 'metadata',
             playsinline: true,
             muted: true,
           })
-        : h('img', { class: 'cms-insp-img', src: thumbUrl(slug, item.file, 700, item.v), alt: '' });
+        : h('img', {
+            class: 'cms-insp-img',
+            src: thumbUrl(slug, item.file, 700, item.v + webV(item.file)),
+            alt: '',
+          });
 
     const alt = h('input', {
       class: 'cms-input',
@@ -1443,6 +1544,7 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
             icon('plus', 16),
             `Ajouter au bloc ${target.title ? `« ${target.title} »` : `(${TYPE_INFO[target.type as ops.EditableType]?.label ?? target.type})`}`,
           ),
+        mediaDetails(item, web),
         h(
           'div',
           { class: 'cms-insp-block' },
@@ -1545,6 +1647,108 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
           icon('trash', 16),
           'Supprimer le fichier…',
         ),
+      ),
+    );
+  }
+
+  /** Original (format, dimensions, ratio, poids…) et versions web (statut, poids), avec « Régénérer ». */
+  function mediaDetails(item: GalleryItem, web: WebInfo | undefined) {
+    const info = fileInfo(item.file);
+    const src = web?.source ?? {};
+    const width = src.width ?? item.width;
+    const height = src.height ?? item.height;
+    const row = (label: string, value: unknown) =>
+      value === undefined || value === '' || value === null
+        ? null
+        : h('div', { class: 'cmp-dl-row' }, h('dt', null, label), h('dd', null, String(value)));
+    const LABELS: Record<string, string> = {
+      image: 'Image maîtresse',
+      video: 'Vidéo (MP4 H.264)',
+      mobile: 'Vidéo mobile',
+      poster: 'Affiche',
+      thumb: 'Miniature',
+    };
+    const ext = (item.file.split('.').pop() ?? '').toUpperCase();
+    return h(
+      'div',
+      { class: 'cms-insp-block' },
+      h('h4', null, 'Original'),
+      h(
+        'dl',
+        { class: 'cmp-dl' },
+        row(
+          'Type',
+          `${item.kind === 'video' ? 'Vidéo' : web?.vector ? 'Image vectorielle' : 'Image'} ${ext}${web?.animated ? ' animée' : ''}`,
+        ),
+        row('Dimensions', width && height ? `${width} × ${height} px` : undefined),
+        row(
+          'Ratio',
+          // « 2160 × 3840 · 9:16 » → « 9:16 » (les dimensions ont leur propre ligne)
+          width && height ? describeRatio(width, height).split(' · ').pop() : undefined,
+        ),
+        row('Poids', formatBytes(info?.size ?? item.size)),
+        row(
+          'Durée',
+          web?.duration
+            ? `${web.duration.toFixed(1)} s${web.audio ? ' · avec son' : ' · sans son'}`
+            : undefined,
+        ),
+        row(
+          'Codec',
+          src.codec
+            ? `${src.codec.toUpperCase()}${src.fps ? ` · ${src.fps} i/s` : ''}${src.hdr ? ' · HDR' : ''}`
+            : undefined,
+        ),
+      ),
+      h(
+        'h4',
+        null,
+        'Versions web ',
+        h(
+          'span',
+          { class: `cmp-web-status is-${web?.status ?? 'pending'}` },
+          STATUS_LABEL[web?.status ?? 'pending'],
+        ),
+      ),
+      web?.status === 'running' &&
+        h(
+          'div',
+          { class: 'cmp-progress is-inline' },
+          h('i', { style: `width:${Math.round((web.progress ?? 0) * 100)}%` }),
+        ),
+      web?.status === 'error' && h('p', { class: 'cmp-warn' }, web.error ?? 'Erreur inconnue.'),
+      web?.status === 'ok' &&
+        h(
+          'dl',
+          { class: 'cmp-dl' },
+          ...Object.entries(web.sizes ?? {}).map(([key, size]) =>
+            row(
+              LABELS[key] ?? key,
+              `${formatBytes(size)}${key === 'image' || key === 'video' ? ` · ${web.width} × ${web.height}` : ''}${web.storage?.[key] === 'remote' ? ' · stockage distant (hors Git)' : ''}`,
+            ),
+          ),
+          row('Traitement', web.transcode),
+          Object.values(web.storage ?? {}).includes('remote') &&
+            row(
+              'Stockage',
+              'Plus de 25 Mio : copie locale dans distant/, à envoyer vers le stockage externe (R2…).',
+            ),
+        ),
+      h(
+        'p',
+        { class: 'cms-muted' },
+        'L’original n’est jamais modifié. Le site utilise ces versions web (AVIF / WebP et tailles adaptées à chaque écran sont produites à la publication).',
+      ),
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'cms-btn is-ghost',
+          disabled: web?.status === 'queued' || web?.status === 'running',
+          onclick: () => void startOptimize([item.file], web?.status === 'ok'),
+        },
+        icon('refresh', 16),
+        web?.status === 'ok' ? 'Régénérer' : 'Générer maintenant',
       ),
     );
   }
@@ -1684,10 +1888,12 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
       if (room.length) commit(ops.addItems(blocks(), target.block, room, target.index));
       else renderAll();
     } else renderAll();
-    if (added.length)
+    if (added.length) {
       toast(
-        `${added.length} média${added.length > 1 ? 's' : ''} ajouté${added.length > 1 ? 's' : ''}.`,
+        `${added.length} média${added.length > 1 ? 's' : ''} ajouté${added.length > 1 ? 's' : ''} — versions web en préparation.`,
       );
+      void refreshFiles();
+    }
   }
 
   fileInput.addEventListener('change', () => {
@@ -1774,8 +1980,10 @@ export function mountComposer(host: HTMLElement, editor: Editor): () => void {
   const resize = new ResizeObserver(() => fitStage());
   resize.observe(stage);
   renderAll();
+  if (notReady().length) void refreshFiles();
 
   return () => {
+    clearTimeout(polling);
     resize.disconnect();
     librarySortable?.destroy();
     legacyView?.();

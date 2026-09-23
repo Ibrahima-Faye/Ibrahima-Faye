@@ -134,6 +134,7 @@ const meta = [
             alt=""
             formats={['webp']}
             widths={[240]}
+            fallbackFormat={cover.format === 'webp' ? 'webp' : undefined}
             sizes="100vw"
             pictureAttributes={{ class: 'absolute inset-0 -z-10 block' }}
             class="size-full scale-125 object-cover opacity-45 blur-3xl saturate-150"
@@ -145,6 +146,7 @@ const meta = [
               alt={coverAlt}
               formats={['avif', 'webp']}
               widths={[800, 1200, 1800, 2400]}
+              fallbackFormat={cover.format === 'webp' ? 'webp' : undefined}
               sizes="(min-width: 1536px) 1400px, 92vw"
               loading="eager"
               fetchpriority="high"

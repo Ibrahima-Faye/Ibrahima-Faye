@@ -38,7 +38,8 @@ alternatif de la couverture.
 C'est un **éditeur visuel** : ce que tu vois est exactement ce qui sera publié (même grille que le site).
 
 - **Ajouter des médias** : bouton, ou **glisser des fichiers depuis l'explorateur** n'importe où sur la galerie.
-  JPG, PNG, WebP, AVIF · MP4, WebM. Plusieurs à la fois ; ils gardent l'ordre dans lequel tu les as choisis.
+  JPG, PNG, WebP, AVIF, GIF, SVG, HEIC · MP4, WebM, MOV, M4V. Les versions web se préparent seules
+  (statut sur chaque vignette, détails et « Régénérer » dans la fiche du fichier) — voir [MEDIAS.md](MEDIAS.md). Plusieurs à la fois ; ils gardent l'ordre dans lequel tu les as choisis.
 - **Réordonner** : attrape la poignée **⠿** d'un média et déplace-le. La page défile toute seule si tu vas vers le bord
   de l'écran. Sans souris : boutons **◀ Avancer / Reculer ▶** dans le panneau de détail.
 - **Taille dans la grille** : boutons **−** / **+** sur chaque média, ou les six puces du panneau de détail :

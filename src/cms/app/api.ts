@@ -52,6 +52,14 @@ export const api = {
   remove: (slug: string) => request<{ trashed: string }>('DELETE', `/api/projects/${slug}`),
   rename: (slug: string, next: string) =>
     request<{ slug: string }>('POST', `/api/projects/${slug}/rename`, { slug: next }),
+  /** Pipeline médias : lancer l'optimisation (fichiers donnés, sinon tout ce qui manque) / suivre son avancement. */
+  optimize: (slug: string, options: { files?: string[]; force?: boolean } = {}) =>
+    request<{ queued: string[] }>('POST', `/api/projects/${slug}/optimize`, options),
+  optimizeStatus: (slug: string) =>
+    request<{
+      busy: boolean;
+      files: Record<string, { state: string; progress?: number; error?: string }>;
+    }>('GET', `/api/projects/${slug}/optimize`),
   deleteMedia: (slug: string, file: string) =>
     request<{ removed: string[] }>(
       'DELETE',
@@ -93,3 +101,7 @@ export const thumbUrl = (slug: string, file: string, width = 480, version?: numb
 
 export const fileUrl = (slug: string, file: string, version?: number) =>
   `${BASE}/file/${slug}/${encodeURIComponent(file)}${version ? `?v=${version}` : ''}`;
+
+/** Version web d'un original (ex. `video.mp4` pour lire un MOV, `poster.jpg`). */
+export const webUrl = (slug: string, file: string, output: string, version?: number) =>
+  `${BASE}/web/${slug}/${encodeURIComponent(file)}/${encodeURIComponent(output)}${version ? `?v=${version}` : ''}`;

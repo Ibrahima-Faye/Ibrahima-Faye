@@ -125,6 +125,12 @@ describe('composition historique — les 10 vrais projets', () => {
   });
 });
 
+it('nouveaux formats (HEIC, MOV, GIF, SVG, M4V) : désormais des médias de galerie', () => {
+  const names = ['a.heic', 'b.mov', 'c.gif', 'd.svg', 'e.m4v', 'f.jpg'];
+  const { blocks } = normalizeGallery({ files: mediaFiles(names) });
+  expect(blocks[0]!.items.map((i) => i.file)).toEqual(names);
+});
+
 describe('composition historique — cas limites', () => {
   const cases: [string, string[], OldMedia[], string?][] = [
     ['tri naturel', ['image-10.jpg', 'image-2.jpg', 'image-1.jpg'], []],
@@ -144,7 +150,7 @@ describe('composition historique — cas limites', () => {
       ['a.jpg'],
       [{ file: 'zz.jpg' }, { file: 'a.jpg', span: 4, align: 'start' }],
     ],
-    ['formats pas encore activés ignorés', ['a.heic', 'b.mov', 'c.gif', 'd.svg', 'e.jpg'], []],
+    ['fichiers non médias ignorés', ['notes.txt', 'plan.pdf', 'media.json', 'e.jpg'], []],
     ['couverture choisie', ['a.jpg', 'b.jpg'], [], 'b.jpg'],
     ['couverture absente → cover.*', ['a.jpg', 'cover.png'], [], 'zz.jpg'],
   ];

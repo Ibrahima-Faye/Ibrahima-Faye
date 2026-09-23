@@ -78,7 +78,8 @@ Pour contrôler l'ordre, préfixer les noms : `01-facade.jpg`, `02-interieur.jpg
 
 ### Formats et ratios
 
-- **Images** : JPG, PNG, WebP, AVIF. **Vidéos** : MP4, WebM.
+- **Images** : JPG, PNG, WebP, AVIF, GIF, SVG, HEIC. **Vidéos** : MP4, WebM, MOV, M4V.
+  Les versions web sont produites automatiquement (voir [MEDIAS.md](MEDIAS.md)) ; l'original n'est jamais modifié.
 - **Tous les ratios sont acceptés** : 16:9, 4:3, 3:2, 1:1, 9:16, panoramique… Rien n'est jamais recadré :
   la galerie place chaque média à son ratio d'origine, la visionneuse l'affiche en entier.
 - Le site génère lui-même les versions AVIF / WebP optimisées et les tailles adaptées à chaque écran.
@@ -86,9 +87,9 @@ Pour contrôler l'ordre, préfixer les noms : `01-facade.jpg`, `02-interieur.jpg
 - **Vidéos** : le ratio est lu automatiquement par le navigateur. Pour éviter tout décalage au chargement,
   on peut le déclarer (voir `media` plus bas) ou ajouter une image affiche du même nom.
 
-> ⚠️ **Poids des fichiers.** GitHub refuse les fichiers de plus de 100 Mo et Cloudflare Pages ceux de plus de 25 Mo.
-> Compressez les vidéos (H.264, 1080p suffit en général) ou hébergez les plus lourdes ailleurs (YouTube, Vimeo)
-> et ajoutez un lien dans `links`.
+> **Poids des fichiers.** Les originaux restent hors Git, quel que soit leur poids. Les versions web de plus
+> de 25 Mio (vidéos longues) sont rangées à part, hors Git, pour un stockage externe (Cloudflare R2…) :
+> voir [MEDIAS.md](MEDIAS.md).
 
 ---
 

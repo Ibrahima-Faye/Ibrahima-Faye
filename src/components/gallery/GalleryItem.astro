@@ -24,8 +24,11 @@ interface Props {
 
 const { media: m, placement, style, sizes, eager = false, video, locale = 'fr' } = Astro.props;
 const t = useTranslations(locale);
-/** Lecture automatique : muette, en boucle (sauf avis contraire), et seulement quand la vidéo est visible. */
-const autoplay = m.type === 'video' && video?.autoplay === true;
+/**
+ * Lecture automatique : muette, en boucle (sauf avis contraire), et seulement quand la vidéo est visible.
+ * Un GIF animé (converti en vidéo par le pipeline) se comporte toujours ainsi.
+ */
+const autoplay = m.type === 'video' && (video?.autoplay === true || m.animated === true);
 ---
 
 <figure
@@ -47,12 +50,23 @@ const autoplay = m.type === 'video' && video?.autoplay === true;
     data-h={m.type === 'image' ? m.fullHeight : undefined}
     aria-label={`${t.lightbox.open} : ${m.alt}`}
   >
-    {m.type === 'image' ? (
+    {m.type === 'image' && m.svg ? (
+      <img
+        src={m.svg}
+        alt=""
+        width={m.fullWidth}
+        height={m.fullHeight}
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+        class="size-full"
+      />
+    ) : m.type === 'image' ? (
       <Picture
-        src={m.src}
+        src={m.src!}
         alt=""
         formats={['avif', 'webp']}
         widths={[400, 700, 1000, 1400, 2000]}
+        fallbackFormat={m.src!.format === 'webp' ? 'webp' : undefined}
         sizes={sizes}
         loading={eager ? 'eager' : 'lazy'}
         pictureAttributes={{ class: 'block size-full' }}
@@ -60,9 +74,10 @@ const autoplay = m.type === 'video' && video?.autoplay === true;
       />
     ) : (
       <>
+        <!-- rien n'est téléchargé avant d'en avoir besoin (preload="none" + affiche) ; version légère sur mobile -->
         <video
           class="size-full"
-          src={m.src}
+          src={m.mobileSrc ? undefined : m.src}
           poster={m.poster?.url}
           muted
           playsinline
@@ -73,7 +88,10 @@ const autoplay = m.type === 'video' && video?.autoplay === true;
           data-ratio-known={String(m.ratioKnown)}
           tabindex="-1"
           aria-hidden="true"
-        />
+        >
+          {m.mobileSrc && <source src={m.mobileSrc} media="(max-width: 767px)" type="video/mp4" />}
+          {m.mobileSrc && <source src={m.src} type="video/mp4" />}
+        </video>
         {!autoplay && (
           <span class="play" aria-hidden="true">
             <Icon name="play" class="size-6" />

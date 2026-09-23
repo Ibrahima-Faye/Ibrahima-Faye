@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "items": {
+    "lune-1.png": {
+      "status": "ok",
+      "pipeline": 1,
+      "format": "PNG",
+      "kind": "image",
+      "width": 2160,
+      "height": 2700,
+      "ratio": 0.8,
+      "source": {
+        "width": 2160,
+        "height": 2700,
+        "format": "png",
+        "alpha": true,
+        "size": 13393042,
+        "mtime": 1790044087842,
+        "sha256": "6986ae2983a202d366407db1ebdf18cf54d9acfdbbc4268672ef02fa0a1c599c"
+      },
+      "outputs": {
+        "image": "_web/lune-1.png/image.webp",
+        "thumb": "_web/lune-1.png/thumb.webp"
+      },
+      "sizes": {
+        "image": 2482236,
+        "thumb": 86038
+      },
+      "generator": "sharp 0.35.4",
+      "generatedAt": "2026-09-23T16:54:14.217Z",
+      "storage": {
+        "image": "local",
+        "thumb": "local"
+      }
+    },
+    "lune2.png": {
+      "status": "ok",
+      "pipeline": 1,
+      "format": "PNG",
+      "kind": "image",
+      "width": 2160,
+      "height": 2700,
+      "ratio": 0.8,
+      "source": {
+        "width": 2160,
+        "height": 2700,
+        "format": "png",
+        "alpha": true,
+        "size": 7000720,
+        "mtime": 1790044084999,
+        "sha256": "cca0470ec5efb969d7a8f4453d13dab7a80abdf4b532044482130bf853f4a104"
+      },
+      "outputs": {
+        "image": "_web/lune2.png/image.webp",
+        "thumb": "_web/lune2.png/thumb.webp"
+      },
+      "sizes": {
+        "image": 1206092,
+        "thumb": 46290
+      },
+      "generator": "sharp 0.35.4",
+      "generatedAt": "2026-09-23T16:54:15.762Z",
+      "storage": {
+        "image": "local",
+        "thumb": "local"
+      }
+    },
+    "lune3.png": {
+      "status": "ok",
+      "pipeline": 1,
+      "format": "PNG",
+      "kind": "image",
+      "width": 2160,
+      "height": 2700,
+      "ratio": 0.8,
+      "source": {
+        "width": 2160,
+        "height": 2700,
+        "format": "png",
+        "alpha": true,
+        "size": 9018620,
+        "mtime": 1790044087446,
+        "sha256": "7b7fa780ae73f673f7db110188ad14c4ae1289568a1037b02ec0a5499f68fec1"
+      },
+      "outputs": {
+        "image": "_web/lune3.png/image.webp",
+        "thumb": "_web/lune3.png/thumb.webp"
+      },
+      "sizes": {
+        "image": 1194946,
+        "thumb": 46888
+      },
+      "generator": "sharp 0.35.4",
+      "generatedAt": "2026-09-23T16:54:17.211Z",
+      "storage": {
+        "image": "local",
+        "thumb": "local"
+      }
+    }
+  }
+}

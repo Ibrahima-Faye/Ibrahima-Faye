@@ -45,6 +45,7 @@ const brands = data.entity.map((e) => t.entities[e].name).join(' · ');
           alt={data.coverAlt ?? format(t.projects.coverAlt, { title: data.title })}
           formats={['avif', 'webp']}
           widths={[480, 800, 1200, 1600]}
+          fallbackFormat={cover.format === 'webp' ? 'webp' : undefined}
           sizes="(min-width: 1280px) 30vw, (min-width: 768px) 46vw, 92vw"
           loading={priority ? 'eager' : 'lazy'}
           fetchpriority={priority ? 'high' : 'auto'}

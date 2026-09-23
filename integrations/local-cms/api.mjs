@@ -9,7 +9,10 @@
  *   POST   /api/projects/:slug/rename           changement d'adresse
  *   POST   /api/projects/:slug/media?name=…     envoi d'un média (corps = fichier brut) [&poster=<vidéo>]
  *   DELETE /api/projects/:slug/media/:file      suppression d'un média → .trash/
- *   GET    /thumb/:slug/:file?w=480             miniature
+ *   GET    /api/projects/:slug/optimize             état du pipeline médias (tâches en cours)
+ *   POST   /api/projects/:slug/optimize             lancer l'optimisation { files?, force? }
+ *   GET    /thumb/:slug/:file?w=480             miniature (depuis la version web si besoin : HEIC, vidéo)
+ *   GET    /web/:slug/:file/:output             version web (vidéo MP4, affiche…)
  *   GET    /file/:slug/:file                    fichier d'origine (Range accepté)
  */
 import { HttpError, guard, readJson, sendJson, serveFile } from './http.mjs';
@@ -25,6 +28,12 @@ export function createApi(store) {
       const mutating = !['GET', 'HEAD'].includes(method);
       guard(req, { mutating });
       await store.ready(); // règles et schémas partagés avec le site (à jour à chaque requête)
+
+      // ---------- versions web (pipeline médias) ----------
+      if (parts[0] === 'web' && parts.length === 4 && !mutating) {
+        const media = store.webPath(parts[1], parts[2], parts[3]);
+        return serveFile(req, res, media.path, media.mime);
+      }
 
       // ---------- fichiers (images, vidéos, miniatures) ----------
       if ((parts[0] === 'thumb' || parts[0] === 'file') && parts.length === 3 && !mutating) {
@@ -57,6 +66,10 @@ export function createApi(store) {
       } else if (sub === 'rename' && parts.length === 4 && method === 'POST') {
         const body = await readJson(req);
         return sendJson(res, 200, await store.renameProject(slug, body.slug));
+      } else if (sub === 'optimize' && parts.length === 4) {
+        if (method === 'GET') return sendJson(res, 200, store.optimizeStatus(slug));
+        if (method === 'POST')
+          return sendJson(res, 202, await store.optimize(slug, await readJson(req)));
       } else if (sub === 'media') {
         if (parts.length === 4 && method === 'POST') {
           const file = await store.saveUpload(slug, req, {

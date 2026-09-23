@@ -1,0 +1,15 @@
+[
+  { "ext": "jpg", "kind": "image", "mime": "image/jpeg", "label": "JPG" },
+  { "ext": "jpeg", "kind": "image", "mime": "image/jpeg", "label": "JPEG" },
+  { "ext": "png", "kind": "image", "mime": "image/png", "label": "PNG" },
+  { "ext": "webp", "kind": "image", "mime": "image/webp", "label": "WebP" },
+  { "ext": "avif", "kind": "image", "mime": "image/avif", "label": "AVIF" },
+  { "ext": "gif", "kind": "image", "mime": "image/gif", "label": "GIF" },
+  { "ext": "svg", "kind": "image", "mime": "image/svg+xml", "label": "SVG" },
+  { "ext": "heic", "kind": "image", "mime": "image/heic", "label": "HEIC" },
+  { "ext": "heif", "kind": "image", "mime": "image/heif", "label": "HEIF" },
+  { "ext": "mp4", "kind": "video", "mime": "video/mp4", "label": "MP4" },
+  { "ext": "webm", "kind": "video", "mime": "video/webm", "label": "WebM" },
+  { "ext": "mov", "kind": "video", "mime": "video/quicktime", "label": "MOV" },
+  { "ext": "m4v", "kind": "video", "mime": "video/x-m4v", "label": "M4V" }
+]

@@ -2461,3 +2461,116 @@ dialog.cms-modal::backdrop {
     max-height: none;
   }
 }
+
+/* ============================================================ pipeline médias (médiathèque) */
+.cmp-web {
+  position: absolute;
+  bottom: 0.3rem;
+  right: 0.3rem;
+  min-width: 1.3rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgb(4 5 13 / 0.8);
+  color: var(--color-lavender-100);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  text-align: center;
+}
+
+.cmp-web.is-running,
+.cmp-web.is-queued {
+  background: rgb(123 77 255 / 0.85);
+  color: var(--color-paper);
+}
+
+.cmp-web.is-error {
+  background: rgb(200 50 85 / 0.9);
+  color: #fff;
+}
+
+.cmp-web.is-pending {
+  background: rgb(240 180 80 / 0.85);
+  color: #1b1405;
+}
+
+.cmp-optimize {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(200 169 255 / 0.2);
+  background: rgb(123 77 255 / 0.08);
+  color: var(--color-paper-muted);
+  font-size: 0.76rem;
+}
+
+.cmp-optimize .cms-btn {
+  justify-content: center;
+}
+
+.cmp-missing.is-waiting {
+  color: var(--color-lavender-200);
+  text-align: center;
+  padding: 0.4rem;
+}
+
+.cmp-dl {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.4rem 0 0.8rem;
+  font-size: 0.8rem;
+}
+
+.cmp-dl-row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+.cmp-dl dt {
+  color: var(--color-paper-faint);
+}
+
+.cmp-dl dd {
+  overflow-wrap: anywhere;
+  color: var(--color-paper);
+}
+
+.cmp-web-status {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.08);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.cmp-web-status.is-ok {
+  background: rgb(80 200 140 / 0.18);
+  color: #9fe6bf;
+}
+
+.cmp-web-status.is-error {
+  background: rgb(200 50 85 / 0.25);
+  color: #ffb4c2;
+}
+
+.cmp-web-status.is-running,
+.cmp-web-status.is-queued {
+  background: rgb(123 77 255 / 0.25);
+  color: var(--color-lavender-100);
+}
+
+.cmp-web-status.is-pending {
+  background: rgb(240 180 80 / 0.16);
+  color: #f3cf8c;
+}
+
+.cmp-progress.is-inline {
+  position: static;
+  margin: 0.3rem 0 0.8rem;
+}
