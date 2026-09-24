@@ -89,6 +89,18 @@ La **vraie page publique** du projet, affichée dans un cadre « ordinateur », 
 vraies règles responsives). Les modifications sont enregistrées juste avant l'affichage. « Actualiser » recharge,
 « Ouvrir dans un onglet » l'ouvre en grand.
 
+## Connexion (mot de passe)
+
+`/admin` et toute l'API `/__cms` sont protégés par mot de passe (le site public ne change pas).
+
+1. `npm run admin:mot-de-passe` — saisie masquée ; seule l'**empreinte** scrypt est écrite dans `.env` (ignoré par Git).
+2. Redémarrer `npm run dev`, ouvrir `/admin` → page de connexion.
+
+- Session : 2 h sans activité, 12 h au plus (`CMS_SESSION_IDLE_MINUTES`, `CMS_SESSION_HOURS`) ; « Se déconnecter » dans le menu.
+- Session expirée : retour à la connexion, puis à la page où tu étais.
+- 5 erreurs de mot de passe → pause d'une minute (puis plus longue).
+- `CMS_AUTH=off` dans `.env` désactive la protection (déconseillé).
+
 ## Contenu du site
 
 Menu **Contenu du site** : tous les textes et contenus du portfolio (Accueil, Expertises, Projets, Écosystème,

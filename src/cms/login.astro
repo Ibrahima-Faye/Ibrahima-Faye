@@ -1,0 +1,142 @@
+---
+/**
+ * Page de connexion de l'administration — servie sur /admin/connexion, UNIQUEMENT en `npm run dev`
+ * (route injectée par integrations/local-cms ; absente du site publié). Vérification : integrations/local-cms/auth.mjs.
+ */
+import '@/styles/global.css';
+import '@/cms/admin.css';
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark" />
+    <title>Connexion — Administration</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="cms cms-login">
+    <main class="login-card">
+      <div class="cms-brand">
+        <span class="cms-monogram">IF</span>
+        <span>
+          <strong>Administration</strong>
+          <small>Ibrahima Faye</small>
+        </span>
+      </div>
+      <h1>Connexion</h1>
+      <p class="login-notice" data-notice hidden></p>
+
+      <div class="login-setup" data-setup hidden>
+        <p>
+          <strong>Aucun mot de passe n’est encore défini.</strong>
+        </p>
+        <p>
+          Dans un terminal, à la racine du projet, lance <code>npm run admin:mot-de-passe</code>,
+          puis redémarre le serveur (<code>npm run dev</code>). Le mot de passe n’est enregistré
+          nulle part : seule son empreinte va dans <code>.env</code> (jamais dans Git).
+        </p>
+      </div>
+
+      <form class="login-form" data-form novalidate>
+        <label class="cms-field">
+          <span>Mot de passe</span>
+          <span class="login-password">
+            <input
+              class="cms-input"
+              type="password"
+              name="password"
+              autocomplete="current-password"
+              required
+              autofocus
+            />
+            <button
+              type="button"
+              class="login-show"
+              data-show
+              aria-label="Afficher le mot de passe"
+            >
+              Afficher
+            </button>
+          </span>
+        </label>
+        <p class="login-error" data-error role="alert" hidden></p>
+        <button type="submit" class="cms-btn is-primary login-submit">
+          Se connecter
+        </button>
+      </form>
+      <p class="login-foot">
+        <a href="/" class="link-line">
+          ← Retour au site
+        </a>
+      </p>
+    </main>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const notice = document.querySelector<HTMLElement>('[data-notice]')!;
+      const setup = document.querySelector<HTMLElement>('[data-setup]')!;
+      const form = document.querySelector<HTMLFormElement>('[data-form]')!;
+      const error = document.querySelector<HTMLElement>('[data-error]')!;
+      const input = form.querySelector<HTMLInputElement>('input[name="password"]')!;
+      const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      const show = document.querySelector<HTMLButtonElement>('[data-show]')!;
+      // l'ancre (#/contenu/…) de la page demandée est conservée : on y retourne après connexion
+      const target = () => `/admin/${location.hash}`;
+
+      const say = (el: HTMLElement, text: string) => {
+        el.textContent = text;
+        el.hidden = !text;
+      };
+      if (params.has('expiree')) say(notice, 'Ta session a expiré. Reconnecte-toi pour continuer.');
+      if (params.has('deconnecte')) say(notice, 'Tu es déconnecté.');
+
+      show.addEventListener('click', () => {
+        const visible = input.type === 'text';
+        input.type = visible ? 'password' : 'text';
+        show.textContent = visible ? 'Afficher' : 'Masquer';
+        show.setAttribute(
+          'aria-label',
+          visible ? 'Afficher le mot de passe' : 'Masquer le mot de passe',
+        );
+      });
+
+      fetch('/__cms/auth/session', { headers: { 'X-CMS': '1' } })
+        .then((r) => r.json())
+        .then((s: { enabled: boolean; configured: boolean; authenticated: boolean }) => {
+          if (s.authenticated) return location.replace(target());
+          if (s.enabled && !s.configured) {
+            setup.hidden = false;
+            form.hidden = true;
+          }
+        })
+        .catch(() => say(error, 'Serveur de développement injoignable.'));
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        say(error, '');
+        if (!input.value) return say(error, 'Saisis ton mot de passe.');
+        submit.disabled = true;
+        submit.textContent = 'Connexion…';
+        try {
+          const response = await fetch('/__cms/auth/login', {
+            method: 'POST',
+            headers: { 'X-CMS': '1', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: input.value }),
+          });
+          const json = (await response.json().catch(() => ({}))) as { error?: string };
+          if (response.ok) return location.replace(target());
+          say(error, json.error ?? `Erreur ${response.status}`);
+          input.select();
+        } catch {
+          say(error, 'Serveur de développement injoignable.');
+        } finally {
+          submit.disabled = false;
+          submit.textContent = 'Se connecter';
+        }
+      });
+    </script>
+  </body>
+</html>

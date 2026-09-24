@@ -1,6 +1,31 @@
 import type { FileInfo, ProjectData, ProjectDetail, ProjectSummary, SettingsFile } from './types';
 
 const BASE = '/__cms';
+
+/**
+ * Session absente ou expirée (réponse 401 « auth ») : retour à la page de connexion, en gardant la page
+ * en cours (#/…) pour y revenir après. Un avertissement « modifications non enregistrées » peut s'afficher.
+ */
+export function sessionExpired() {
+  location.assign(`/admin/connexion?expiree=1${location.hash}`);
+}
+
+/** État de la session (protection active ? connecté ? expiration). */
+export const authSession = () =>
+  fetch(`${BASE}/auth/session`, { headers: { 'X-CMS': '1' } }).then(
+    (r) =>
+      r.json() as Promise<{
+        enabled: boolean;
+        configured: boolean;
+        authenticated: boolean;
+        expiresAt: number | null;
+      }>,
+  );
+
+export const logout = () =>
+  fetch(`${BASE}/auth/logout`, { method: 'POST', headers: { 'X-CMS': '1' } }).then(() =>
+    location.assign('/admin/connexion?deconnecte=1'),
+  );
 /** En-tête exigé par le serveur pour toute modification : un autre site web ne peut pas l'envoyer. */
 const HEADERS = { 'X-CMS': '1' };
 
@@ -18,6 +43,11 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
     /* réponse non JSON */
   }
   if (!response.ok) {
+    // session expirée : retour à la connexion, sans message d'erreur intermédiaire (la page change)
+    if (response.status === 401 && (json as { code?: string })?.code === 'auth') {
+      sessionExpired();
+      return new Promise<never>(() => {});
+    }
     const message = (json as { error?: string })?.error ?? `Erreur ${response.status}`;
     throw new ApiError(response.status, message);
   }
@@ -87,6 +117,10 @@ export const api = {
       body: file,
     });
     const json = (await response.json().catch(() => ({}))) as { path?: string; error?: string };
+    if (response.status === 401) {
+      sessionExpired();
+      return new Promise<never>(() => {});
+    }
     if (!response.ok)
       throw new ApiError(response.status, json.error ?? `Erreur ${response.status}`);
     return json as { path: string };
@@ -121,6 +155,7 @@ export function upload(
         /* ignoré */
       }
       if (xhr.status >= 200 && xhr.status < 300) resolve(json as FileInfo);
+      else if (xhr.status === 401) sessionExpired();
       else reject(new Error(json.error ?? `Erreur ${xhr.status}`));
     };
     xhr.send(file);

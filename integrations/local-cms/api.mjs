@@ -20,12 +20,16 @@
  *   GET    /api/settings/:name/history          versions précédentes (.cms/historique/reglages/)
  *   GET    /api/settings/:name/history/:id      une version précédente
  *   POST   /api/identity?name=logo.svg          image d'identité → public/identite/ (corps = fichier brut)
+ *
+ *   GET    /auth/session                        état de la session (seule route lisible sans être connecté,
+ *   POST   /auth/login { password }             avec la connexion) ; toutes les autres exigent une session
+ *   POST   /auth/logout                         valide (401 + code « auth » sinon) — voir auth.mjs
  */
 import { HttpError, guard, readJson, sendJson, serveFile } from './http.mjs';
 
 const seg = (s) => decodeURIComponent(s);
 
-export function createApi(store, settings) {
+export function createApi(store, settings, auth) {
   return async function handle(req, res) {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost');
@@ -33,6 +37,31 @@ export function createApi(store, settings) {
       const parts = url.pathname.split('/').filter(Boolean).map(seg);
       const mutating = !['GET', 'HEAD'].includes(method);
       guard(req, { mutating });
+
+      // ---------- authentification ----------
+      if (parts[0] === 'auth') {
+        if (parts[1] === 'session' && parts.length === 2 && method === 'GET')
+          return sendJson(res, 200, auth.status(req));
+        if (parts[1] === 'login' && parts.length === 2 && method === 'POST') {
+          const body = await readJson(req, 10_000);
+          const result = await auth.login(req, body.password);
+          if (!result.ok) return sendJson(res, result.status, { error: result.error });
+          res.setHeader('Set-Cookie', result.cookie);
+          return sendJson(res, 200, { ok: true });
+        }
+        if (parts[1] === 'logout' && parts.length === 2 && method === 'POST') {
+          res.setHeader('Set-Cookie', auth.logout(req));
+          return sendJson(res, 200, { ok: true });
+        }
+        throw new HttpError(404, 'Route inconnue.');
+      }
+      // tout le reste (lecture comme écriture, fichiers et médias compris) : session obligatoire
+      if (!auth.check(req)) {
+        const error = new HttpError(401, 'Session expirée ou absente : reconnecte-toi.');
+        error.code = 'auth';
+        throw error;
+      }
+
       await store.ready(); // règles et schémas partagés avec le site (à jour à chaque requête)
 
       // ---------- versions web (pipeline médias) ----------
@@ -108,7 +137,11 @@ export function createApi(store, settings) {
       const status =
         error instanceof HttpError ? error.status : error?.code === 'ENOENT' ? 404 : 500;
       if (status === 500) console.error('[cms]', error);
-      if (!res.headersSent) sendJson(res, status, { error: error?.message ?? 'Erreur inconnue.' });
+      if (!res.headersSent)
+        sendJson(res, status, {
+          error: error?.message ?? 'Erreur inconnue.',
+          ...(status === 401 && error?.code === 'auth' ? { code: 'auth' } : {}),
+        });
       else res.destroy();
     }
   };

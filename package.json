@@ -18,7 +18,8 @@
     "projet": "node scripts/new-project.mjs",
     "sauvegarde": "node scripts/snapshot.mjs",
     "sauvegarde:restaurer": "node scripts/restore-snapshot.mjs",
-    "medias": "node scripts/medias.mjs"
+    "medias": "node scripts/medias.mjs",
+    "admin:mot-de-passe": "node scripts/admin-password.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

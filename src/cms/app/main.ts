@@ -12,6 +12,7 @@
  *   #/contenu/<catégorie>    Contenu du site : accueil | expertises | projets | ecosysteme | a-propos | contact | footer | navigation
  */
 import type { Meta, Route, View } from './types';
+import { authSession, logout, sessionExpired } from './api';
 import { h, icon } from './ui';
 import { mountDashboard } from './views/dashboard';
 import { mountEditor } from './views/editor';
@@ -70,6 +71,12 @@ function parseRoute(hash: string): Route {
 }
 
 /* ---------- coque : barre latérale + zone principale ---------- */
+const authBox = h(
+  'button',
+  { type: 'button', class: 'cms-nav-link cms-logout', onclick: () => void logout() },
+  icon('close', 18),
+  'Se déconnecter',
+);
 const nav = h('nav', { class: 'cms-nav', 'aria-label': 'Navigation' });
 const main = h('main', { class: 'cms-main', id: 'cms-main' });
 
@@ -131,12 +138,36 @@ document
             'Page Projets',
           ),
           h('p', { class: 'cms-local' }, h('i'), 'Mode local — jamais publié'),
+          authBox,
         ),
       ),
       main,
     ),
     h('div', { id: 'cms-toasts', 'aria-live': 'polite' }),
   );
+
+/* ---------- session : déconnexion, expiration ---------- */
+function watchSession() {
+  const check = async () => {
+    try {
+      const s = await authSession();
+      if (!s.authenticated) sessionExpired();
+      else if (!s.enabled)
+        authBox.replaceChildren(
+          h('p', { class: 'cms-auth-off' }, 'Sans mot de passe (CMS_AUTH=off)'),
+        );
+    } catch {
+      /* serveur momentanément injoignable : nouvel essai au prochain passage */
+    }
+  };
+  void check();
+  window.setInterval(() => void check(), 60_000);
+  document.addEventListener(
+    'visibilitychange',
+    () => document.visibilityState === 'visible' && void check(),
+  );
+}
+watchSession();
 
 /* ---------- routeur ---------- */
 let current: { route: Route; view: View } | undefined;

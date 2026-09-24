@@ -3488,3 +3488,104 @@ select.st-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================ connexion / déconnexion */
+.cms-login {
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.login-card {
+  display: grid;
+  gap: 1.2rem;
+  width: min(100%, 26rem);
+  padding: 2rem 1.8rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(200 169 255 / 0.16);
+  background: rgb(7 9 20 / 0.8);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 30px 80px -30px rgb(123 77 255 / 0.45);
+}
+
+.login-card h1 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+
+.login-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.login-password {
+  position: relative;
+  display: block;
+}
+
+.login-password .cms-input {
+  padding-right: 5.5rem;
+}
+
+.login-show {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.4rem;
+  font-size: 0.74rem;
+  color: var(--color-mauve-300);
+  cursor: pointer;
+}
+
+.login-submit {
+  justify-self: stretch;
+  padding-block: 0.8rem;
+}
+
+.login-error {
+  color: #ffb4c2;
+  font-size: 0.84rem;
+}
+
+.login-notice {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background: rgb(123 77 255 / 0.14);
+  color: var(--color-lavender-100);
+  font-size: 0.84rem;
+}
+
+.login-setup {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgb(240 180 80 / 0.35);
+  background: rgb(240 180 80 / 0.08);
+  font-size: 0.86rem;
+  color: var(--color-paper-muted);
+}
+
+.login-setup code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-lavender-100);
+}
+
+.login-foot {
+  font-size: 0.8rem;
+  color: var(--color-paper-faint);
+}
+
+.cms-logout {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cms-auth-off {
+  font-size: 0.72rem;
+  color: #f3cf8c;
+}
