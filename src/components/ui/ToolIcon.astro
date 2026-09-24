@@ -1,0 +1,37 @@
+---
+/**
+ * Icône d'un outil : logo officiel (rempli), pictogramme au trait, ou image téléversée.
+ * Registre : src/lib/tool-icons.ts — remplacement depuis l'administration (Expertises → Outils).
+ */
+import { TOOL_ICONS } from '@/lib/tool-icons';
+import type { ToolView } from '@/lib/tools';
+
+interface Props {
+  icon: ToolView['icon'];
+  class?: string;
+}
+
+const { icon, class: className } = Astro.props;
+const def = 'builtin' in icon ? TOOL_ICONS[icon.builtin] : undefined;
+---
+
+{'src' in icon ? (
+  <img src={icon.src} alt="" class:list={['object-contain', className]} loading="lazy" />
+) : def?.kind === 'brand' ? (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" class={className}>
+    <path d={def.path} />
+  </svg>
+) : (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    class={className}
+  >
+    <path d={def?.path} />
+  </svg>
+)}

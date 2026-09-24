@@ -5,18 +5,13 @@ import tailwindcss from '@tailwindcss/vite';
 import localCms from './integrations/local-cms/index.mjs';
 
 /**
- * URL publique du site (canonical, sitemap, Open Graph).
- * Définir SITE_URL dans l'hébergeur (ex. https://mon-domaine.com).
- * Les variables natives de Vercel / Netlify / Cloudflare Pages servent de repli.
+ * URL publique du site (canonical, sitemap, Open Graph) : le domaine de production officiel.
+ * La variable SITE_URL (chez l'hébergeur) le remplace si besoin, ex. pour un domaine de test.
+ * (Le build Cloudflare Workers ne fournit aucune variable d'adresse : sans valeur par défaut,
+ * canonical et sitemap pointaient vers http://localhost:4321.)
  */
-const site =
-  process.env.SITE_URL ||
-  process.env.URL || // Netlify
-  process.env.CF_PAGES_URL || // Cloudflare Pages
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : undefined) ||
-  'http://localhost:4321';
+const PRODUCTION_URL = 'https://ibrahimafye.com';
+const site = process.env.SITE_URL || PRODUCTION_URL;
 
 // https://astro.build/config
 export default defineConfig({

@@ -262,19 +262,17 @@ Un **placeholder** est toujours étiqueté comme tel (« Placeholder ») : il ne
   Pour publier l'un d'eux : déposer les médias dans son dossier, compléter `project.md`, retirer `draft: true`.
   L'ordre d'affichage suit la colonne `#` (champ `order`).
 
-## Visuels de la section « Expertises »
+## Section « Expertises » : domaines, projets et outils
 
-Chaque domaine a une **illustration technique animée** (étiquetée « Illustration technique »).
-Pour la remplacer par tes propres médias, dépose un fichier nommé comme le domaine dans `src/assets/domaines/` :
+La section se remplit toute seule à partir des fiches projet :
 
-```
-src/assets/domaines/
-├── robotique.jpg                    ← image (JPG, PNG, WebP, AVIF), tout ratio : jamais recadrée
-├── impression-3d-fabrication.mp4    ← ou une courte vidéo en boucle (MP4, WebM)
-└── ...
-```
+- chaque domaine liste les **projets publiés** de sa catégorie (« Démontré par ») ;
+- les **outils** (logiciels, cartes électroniques) et le **matériel** cités dans `technologies` s'affichent sur le
+  domaine du projet, et les outils ont leur carte (icône, catégorie, usage, projets qui les utilisent).
 
-Les noms valides sont les valeurs de `category` (tableau ci-dessus). Si une vidéo et une image existent, la vidéo est utilisée.
+Outils reconnus et leurs icônes : `src/data/tools.ts` et `src/lib/tool-icons.ts`. Une technologie inconnue du
+registre reste affichée comme simple mention. Ajouter, renommer, masquer un outil ou changer son icône :
+**Contenu du site → Expertises → Outils** dans l'administration. Aucun niveau ni pourcentage n'est affiché.
 
 ## Composition de la galerie (`span`, `align`, `cover`)
 

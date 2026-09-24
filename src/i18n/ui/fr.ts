@@ -74,13 +74,23 @@ const fr = {
 
   expertises: {
     eyebrow: 'Expertises',
-    title: 'Des disciplines qui se répondent.',
+    title: 'Ce que je pratique.',
     intro:
-      'Je passe d’un modèle 3D à une pièce imprimée, d’un rendu à un circuit, d’un prototype à un système qui tourne seul.',
+      'Je passe d’un modèle 3D à une pièce imprimée, d’un rendu à un circuit, d’un prototype à un système qui tourne seul. Chaque domaine renvoie aux projets qui le montrent.',
     projectsCount: { one: '{n} projet', other: '{n} projets' },
     seeProjects: 'Voir les projets',
     illustration: 'Illustration technique',
     placeholderDomain: 'Emplacement média',
+    /** Projets publiés du domaine (« compétence → projet »). */
+    provenBy: 'Démontré par',
+    noProject: 'Projets en cours de documentation',
+    /** Matériel et techniques cités dans les fiches projet du domaine. */
+    alsoUsed: 'Matériel & techniques',
+    toolsEyebrow: 'Outils',
+    toolsTitle: 'Les outils de mes projets.',
+    toolsIntro:
+      'Logiciels et cartes électroniques cités dans mes fiches projet — sans niveau ni pourcentage : les projets parlent d’eux-mêmes.',
+    usedIn: 'Utilisé dans',
   },
 
   domains: {
@@ -120,10 +130,10 @@ const fr = {
 
   projects: {
     eyebrow: 'Projets',
-    title: 'Projets sélectionnés',
+    title: 'Réalisations',
     pageTitle: 'Projets',
     intro:
-      'Visualisations, prototypes, systèmes : chaque projet raconte comment une idée devient concrète.',
+      'Visualisations, prototypes, systèmes : chaque projet est rattaché au domaine qu’il démontre et aux outils utilisés.',
     seeAll: 'Tous les projets',
     backHome: 'Accueil',
     empty: 'Les projets sont en cours de documentation. Revenez bientôt.',
@@ -193,22 +203,49 @@ const fr = {
 
   ecosystem: {
     eyebrow: 'Écosystème',
-    title: 'Mon univers professionnel.',
+    title: 'Deux univers complémentaires.',
     intro:
-      'ClicGraph et JeeFSYS m’appartiennent. Deux entités, une même démarche : partir d’une idée et la rendre concrète.',
-    domainsLabel: 'Domaines',
+      'Mon profil est hybride : la création numérique d’un côté, la technologie de l’autre. ClicGraph et JeeFSYS en sont les deux dimensions.',
+    domainsLabel: 'Univers',
     seeProjects: 'Voir les projets {name}',
+    bridgeTitle: 'ClicGraph × JeeFSYS',
+    bridgeText: 'Deux univers, une même approche : transformer une idée en solution concrète.',
+    /** Mots-clés de chaque univers (liste : src/data/entities.ts → entityUniverse). */
+    keywords: {
+      creation: 'Création numérique',
+      '3d': '3D',
+      architecture: 'Architecture',
+      visualisation: 'Visualisation',
+      'design-graphique': 'Design graphique',
+      'impression-3d': 'Impression 3D',
+      fabrication: 'Fabrication',
+      robotique: 'Robotique',
+      automatisation: 'Automatisation',
+      electronique: 'Électronique',
+      embarque: 'Systèmes embarqués',
+      prototypage: 'Prototypage',
+    },
   },
 
   about: {
     eyebrow: 'À propos',
-    title: 'Créateur technologique.',
+    title: 'Ibrahima Faye',
+    role: 'Créateur technologique',
     paragraphs: [
-      'Je suis Ibrahima Faye. Je crée à la croisée du numérique et du physique : je conçois en 3D, je visualise, je fabrique, puis j’automatise.',
-      'Mon travail relie la créativité, la conception, la technologie et la fabrication. À travers ClicGraph et JeeFSYS, je transforme mes idées en visualisations, prototypes, systèmes et solutions concrètes.',
+      'Je crée à la croisée du numérique et du physique : je conçois en 3D, je visualise, je fabrique, puis j’automatise.',
+      'Mes projets relient la conception 3D, la fabrication, l’électronique, la robotique et l’automatisation. À travers ClicGraph et JeeFSYS, je transforme mes idées en visualisations, prototypes, systèmes et solutions concrètes.',
     ],
     portraitAlt: 'Portrait d’Ibrahima Faye',
-    stepsLabel: 'Ma démarche',
+    /** Fiche d'identité (valeurs tirées des données du site : domaines, entités). */
+    facts: {
+      profile: 'Profil',
+      creation: 'Création numérique',
+      technology: 'Technologie',
+      universe: 'Univers',
+    },
+    /** Parcours / formation : affiché seulement s'il est renseigné (Contenu du site → À propos). */
+    timelineLabel: 'Parcours',
+    stepsLabel: 'Mon approche',
     steps: [
       { title: 'Concevoir', text: 'Imaginer, modéliser, dessiner.' },
       { title: 'Visualiser', text: 'Rendre l’idée visible avant qu’elle existe.' },

@@ -42,6 +42,10 @@ export default function localCms() {
             // Toutes les autres bibliothèques du navigateur utilisées par /admin (lues dans ses imports, ex. astro/zod)
             // et les modules du routeur d'Astro sont pré-compilées DÈS LE DÉMARRAGE (voir admin-deps.mjs) : aucune
             // découverte tardive, donc aucune recompilation en cours de séance qui laisserait /admin en 504.
+            // Cache propre au serveur de développement : `astro check` / `astro sync` recompilent aussi les
+            // dépendances dans node_modules/.vite, avec une autre configuration ; lancés pendant que le serveur
+            // tourne, ils écrasaient SON cache → modules « périmés », 504 sur tout le site et /admin noir.
+            cacheDir: fileURLToPath(new URL('node_modules/.vite-dev/', config.root)),
             optimizeDeps: {
               exclude: ['sortablejs'],
               include: [

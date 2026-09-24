@@ -13,6 +13,7 @@ import { SPAN_INFO } from '@/lib/gallery-layout';
 import fr from '@/i18n/ui/fr';
 import { SECTIONS } from '@/lib/studio/layout';
 import { siteDefaults } from '@/config/site';
+import { getProjects } from '@/lib/projects';
 
 /** Texte d'origine (dictionnaire non modifié) d'un chemin « a.b ». */
 const original = (path: string) =>
@@ -22,7 +23,15 @@ const original = (path: string) =>
 const t = useTranslations('fr');
 
 // Vocabulaire du site transmis à l'interface (une seule source de vérité : src/data + src/i18n).
+// outils cités dans les fiches (Expertises → Outils) : projets publiés uniquement, comme sur le site
+const technologies = [
+  ...new Set(
+    (await getProjects()).filter((p) => !p.data.draft).flatMap((p) => p.data.technologies),
+  ),
+];
+
 const meta = {
+  technologies,
   categories: domainSlugs.map((slug) => ({
     slug,
     number: domainNumber(slug),

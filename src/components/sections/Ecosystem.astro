@@ -1,5 +1,5 @@
 ---
-import { entityDomains } from '@/data/entities';
+import { entityUniverse } from '@/data/entities';
 import { isDomainSlug } from '@/data/domains';
 import { settings } from '@/lib/settings';
 import { entityItems, inlineMarkdown, safeHref } from '@/lib/studio/content';
@@ -39,18 +39,28 @@ const entities = entityItems(settings.content).map((item, i) => {
   const copy = builtin
     ? t.entities[builtin]
     : { name: item.name ?? '', role: item.role ?? '', description: item.description ?? '' };
-  const domainList = item.domains ?? (builtin ? entityDomains[builtin] : []);
   const count = builtin ? (counts.get(builtin) ?? 0) : 0;
+  const link = (d?: string) =>
+    d && isDomainSlug(d) && (domainCounts.get(d) ?? 0) > 0
+      ? `${projectsPath}?domaine=${d}`
+      : undefined;
+  // Univers d'origine (mots-clés ClicGraph / JeeFSYS), ou domaines choisis dans l'administration
+  const universe =
+    builtin && !item.domains
+      ? entityUniverse[builtin].map((k) => ({
+          title: t.ecosystem.keywords[k.key as keyof typeof t.ecosystem.keywords] ?? k.key,
+          href: link(k.domain),
+        }))
+      : (item.domains ?? [])
+          .filter(isDomainSlug)
+          .map((d) => ({ title: t.domains[d].title, href: link(d) }));
   const href =
     safeHref(item.href) ?? (builtin && count > 0 ? `${projectsPath}?entite=${builtin}` : undefined);
   return {
     slug: item.id,
     index: String(i + 1).padStart(2, '0'),
     ...copy,
-    domains: domainList.filter(isDomainSlug).map((d) => ({
-      title: t.domains[d].title,
-      href: (domainCounts.get(d) ?? 0) > 0 ? `${projectsPath}?domaine=${d}` : undefined,
-    })),
+    domains: universe,
     href: item.button === false ? undefined : href,
     buttonLabel: item.buttonLabel?.trim() || format(t.ecosystem.seeProjects, { name: copy.name }),
     logo: item.logo,
@@ -89,7 +99,7 @@ const tone = (slug: string) =>
     <SectionHeading
       headingId="ecosysteme-title"
       anim="ecosystem"
-      index="03"
+      index={section?.index}
       eyebrow={t.ecosystem.eyebrow}
       title={t.ecosystem.title}
       intro={t.ecosystem.intro}
@@ -275,6 +285,21 @@ const tone = (slug: string) =>
         </>
       ))}
     </div>
+
+    <!-- Le lien entre les deux univers : une même approche -->
+    {composed && (
+      <div class="eco-bridge" data-reveal>
+        <p class="eco-bridge-title">
+          {entities[0]!.name}
+          <span class="eco-bridge-x" aria-hidden="true">
+            ×
+          </span>
+          <span class="sr-only"> et </span>
+          {entities[1]!.name}
+        </p>
+        <p class="eco-bridge-text">{t.ecosystem.bridgeText}</p>
+      </div>
+    )}
   </div>
 </section>
 
@@ -829,6 +854,75 @@ const tone = (slug: string) =>
   .eco-domain:hover .eco-domain-dot {
     opacity: 1;
     box-shadow: 0 0 10px var(--tone);
+  }
+
+  /* ------------------------------------------------------------------ lien entre les deux univers */
+  .eco-bridge {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 0.9rem;
+    margin: 4rem auto 0;
+    max-width: 44rem;
+    padding-top: 2.5rem;
+    text-align: center;
+  }
+
+  .eco-bridge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(18rem, 60%);
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-mauve-400),
+      var(--color-electric-400),
+      transparent
+    );
+  }
+
+  .eco-bridge-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.35rem, 1.1rem + 1.2vw, 2.1rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+
+  .eco-bridge-x {
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 1px solid rgb(200 169 255 / 0.35);
+    border-radius: 50%;
+    color: var(--color-mauve-300);
+    font-size: 1.1rem;
+    transition: transform 0.8s var(--ease-out-expo);
+  }
+
+  .eco-bridge:hover .eco-bridge-x {
+    transform: rotate(90deg);
+  }
+
+  .eco-bridge-text {
+    max-width: 34rem;
+    color: var(--color-paper-muted);
+    font-size: 1.05rem;
+    line-height: 1.6;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .eco-bridge-x {
+      transition: none;
+    }
   }
 
   .eco-pole-link {

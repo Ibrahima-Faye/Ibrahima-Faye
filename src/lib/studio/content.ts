@@ -73,13 +73,40 @@ export interface LinkItem {
   visible?: boolean;
 }
 
+export interface TimelineItem {
+  id: string;
+  /** Ex. « 2021 – 2023 » (libre). */
+  period?: string;
+  title: string;
+  text?: string;
+}
+
+export interface ToolItem {
+  /** Identifiant (celui d'un outil connu, ex. « sketchup », ou un nouvel identifiant). */
+  id: string;
+  name?: string;
+  /** Icône intégrée (ex. « sketchup », « chip ») ou image (« /identite/logo-outil.svg »). */
+  icon?: string;
+  usage?: string;
+  /** Domaine de rattachement (slug) si l'outil n'est cité dans aucun projet. */
+  domain?: string;
+  visible?: boolean;
+}
+
 export interface ContentSettings {
   texts?: Record<string, string | string[]>;
   links?: LinkItem[];
   hero?: { description?: string; primaryHref?: string; secondaryHref?: string };
   expertises?: { items?: ExpertiseItem[] };
   ecosystem?: { items?: EntityItem[] };
-  about?: { steps?: { title: string; text: string }[]; blocks?: AboutBlock[] };
+  about?: {
+    steps?: { title: string; text: string }[];
+    blocks?: AboutBlock[];
+    /** Parcours / formation : rien n'est affiché tant que la liste est vide. */
+    timeline?: TimelineItem[];
+  };
+  /** Outils (section Expertises) : ajouts, icônes, textes, visibilité — voir src/lib/tools.ts. */
+  tools?: { items?: ToolItem[] };
   contact?: {
     email?: string;
     phone?: string;

@@ -6,7 +6,15 @@ import { api } from '../api';
 import { h, icon, toast } from '../ui';
 import { getPath, row, segmented, selectControl, setPath, toggleControl } from '../studio/controls';
 import { LINK_ICONS, isLinkIcon } from '@/lib/icons';
-import { linkHref, linkItems, type LinkItem } from '@/lib/studio/content';
+import { TOOL_ICONS } from '@/lib/tool-icons';
+import { TOOLS } from '@/data/tools';
+import {
+  linkHref,
+  linkItems,
+  type LinkItem,
+  type TimelineItem,
+  type ToolItem,
+} from '@/lib/studio/content';
 import type { ThemeSettings } from '@/lib/studio/theme';
 import type { ContentTab, Meta } from '../types';
 import type {
@@ -376,6 +384,105 @@ function expertises(ctx: Ctx) {
         ),
       ],
     }),
+    heading(
+      'Libellés des cartes',
+      'Chaque domaine liste automatiquement les projets publiés de sa catégorie.',
+    ),
+    dictField(ctx, 'Projets du domaine', 'expertises.provenBy'),
+    dictField(ctx, 'Domaine sans projet', 'expertises.noProject'),
+    dictField(ctx, 'Matériel & techniques', 'expertises.alsoUsed'),
+    ...toolsEditor(ctx),
+  ];
+}
+
+/**
+ * Outils : ceux cités dans les fiches projet (champ « Technologies ») s'affichent tout seuls.
+ * Ici : les renommer, changer leur icône (intégrée ou image), leur usage, les masquer, en ajouter.
+ */
+function toolsEditor(ctx: Ctx) {
+  const own = content(ctx).tools?.items ?? [];
+  const cited = TOOLS.filter(
+    (tool) =>
+      (tool.kind === 'software' || tool.kind === 'board') &&
+      ctx.meta.technologies?.some((tech) => tool.aliases.includes(tech.trim().toLowerCase())),
+  );
+  const all: ToolItem[] = [
+    ...own,
+    ...cited.filter((tool) => !own.some((i) => i.id === tool.id)).map((tool) => ({ id: tool.id })),
+  ];
+  const save = (list: ToolItem[]) =>
+    change(ctx, (c) => {
+      // valeurs vides retirées ; l'ordre est conservé (un outil cité non modifié = son seul id)
+      const items = list.map(
+        (i) =>
+          Object.fromEntries(
+            Object.entries(i).filter(([, v]) => v !== undefined && v !== ''),
+          ) as ToolItem,
+      );
+      const untouched =
+        items.length === cited.length &&
+        items.every((i, k) => i.id === cited[k]!.id && Object.keys(i).length === 1);
+      if (untouched) delete c.tools;
+      else c.tools = { ...c.tools, items };
+    });
+  const iconOptions = [
+    { value: '', label: 'Icône par défaut' },
+    ...Object.entries(TOOL_ICONS).map(([value, def]) => ({ value, label: def.label })),
+  ];
+  let n = 1;
+  while (all.some((i) => i.id === `outil-${n}`)) n++;
+  return [
+    heading(
+      'Outils',
+      'Les outils cités dans vos fiches projet (« Technologies ») apparaissent automatiquement. Aucun niveau n’est affiché : seulement l’outil, sa catégorie, son usage et les projets qui l’utilisent.',
+    ),
+    dictField(ctx, 'Titre', 'expertises.toolsTitle'),
+    dictField(ctx, 'Introduction', 'expertises.toolsIntro', 'text'),
+    listEditor<ToolItem>(ctx, {
+      items: all,
+      save,
+      title: (i) => i.name || TOOLS.find((t) => t.id === i.id)?.name || 'Nouvel outil',
+      visible: (i) => i.visible !== false,
+      toggleVisible: (i) => ({ ...i, visible: i.visible === false ? undefined : false }),
+      removable: (i) => !cited.some((t) => t.id === i.id),
+      add: {
+        label: 'Ajouter un outil',
+        create: () => ({ id: `outil-${n}`, name: 'Nouvel outil' }),
+      },
+      body: (i, _k, update) => {
+        const def = TOOLS.find((t) => t.id === i.id);
+        const image = i.icon && /^(\/|https?:\/\/)/.test(i.icon) ? i.icon : undefined;
+        return [
+          plainInput('Nom', i.name, def?.name ?? 'Nom de l’outil', (v) => update({ name: v })),
+          plainInput('Usage', i.usage, def?.usage ?? 'Ex. Modélisation 3D', (v) =>
+            update({ usage: v }),
+          ),
+          def
+            ? null
+            : row(
+                'Catégorie',
+                selectControl<string>(
+                  i.domain,
+                  [{ value: '', label: 'Aucune' }, ...domainOptions(ctx)],
+                  (v) => update({ domain: v }),
+                ),
+                { hint: 'Pour un outil cité dans un projet, la catégorie vient du projet.' },
+              ),
+          row(
+            'Icône',
+            selectControl<string>(image ? '' : i.icon, iconOptions, (v) => {
+              update({ icon: v });
+              ctx.redraw();
+            }),
+          ),
+          row(
+            'Image de l’icône',
+            imagePicker(image, (path) => (update({ icon: path }), ctx.redraw())),
+            { hint: 'Facultatif : remplace l’icône (SVG ou PNG carré, fond transparent).' },
+          ),
+        ];
+      },
+    }),
   ];
 }
 
@@ -449,7 +556,14 @@ function ecosystem(ctx: Ctx) {
     dictField(ctx, 'Surtitre', 'ecosystem.eyebrow'),
     dictField(ctx, 'Titre', 'ecosystem.title'),
     dictField(ctx, 'Sous-titre', 'ecosystem.intro', 'text'),
-    dictField(ctx, 'Libellé « Domaines »', 'ecosystem.domainsLabel'),
+    dictField(ctx, 'Libellé « Univers »', 'ecosystem.domainsLabel'),
+    dictField(
+      ctx,
+      'Phrase de liaison',
+      'ecosystem.bridgeText',
+      'text',
+      'Affichée sous les deux pôles, après « ClicGraph × JeeFSYS ».',
+    ),
     dictField(
       ctx,
       'Bouton par défaut',
@@ -551,6 +665,13 @@ function about(ctx: Ctx) {
     change(ctx, (c) =>
       setPath(c as Record<string, unknown>, 'about.blocks', list.length ? list : undefined),
     );
+  const timeline = content(ctx).about?.timeline ?? [];
+  const saveTimeline = (list: TimelineItem[]) =>
+    change(ctx, (c) =>
+      setPath(c as Record<string, unknown>, 'about.timeline', list.length ? list : undefined),
+    );
+  let step = 1;
+  while (timeline.some((i) => i.id === `etape-${step}`)) step++;
   let n = 1;
   while (blocks.some((b) => b.id === `bloc-${n}`)) n++;
   const addBlock = h('div', { class: 'ce-add-row' });
@@ -573,7 +694,8 @@ function about(ctx: Ctx) {
   return [
     heading('Présentation'),
     dictField(ctx, 'Surtitre', 'about.eyebrow'),
-    dictField(ctx, 'Titre', 'about.title'),
+    dictField(ctx, 'Titre', 'about.title', 'line', 'Par défaut, votre nom.'),
+    dictField(ctx, 'Rôle (sous le nom)', 'about.role'),
     dictField(
       ctx,
       'Paragraphes',
@@ -582,7 +704,27 @@ function about(ctx: Ctx) {
       'Ligne vide entre deux paragraphes. Le premier est mis en avant.',
     ),
     dictField(ctx, 'Texte alternatif du portrait', 'about.portraitAlt'),
-    heading('Démarche / parcours'),
+    heading(
+      'Parcours / formation',
+      'Rien n’est affiché sur le site tant que cette liste est vide. N’y mettez que des informations exactes.',
+    ),
+    dictField(ctx, 'Titre', 'about.timelineLabel'),
+    listEditor<TimelineItem>(ctx, {
+      items: timeline,
+      save: saveTimeline,
+      title: (i) => [i.period, i.title].filter(Boolean).join(' — ') || 'Étape',
+      removable: () => true,
+      add: {
+        label: 'Ajouter une étape',
+        create: () => ({ id: `etape-${step}`, title: 'Nouvelle étape' }),
+      },
+      body: (i, _k, update) => [
+        plainInput('Période', i.period, 'Ex. 2021 – 2023', (v) => update({ period: v })),
+        plainInput('Titre', i.title, 'Ex. Formation, poste…', (v) => update({ title: v ?? '' })),
+        plainRich('Détail', i.text, 'Facultatif', (v) => update({ text: v })),
+      ],
+    }),
+    heading('Approche'),
     dictField(ctx, 'Titre de la liste', 'about.stepsLabel'),
     listEditor(ctx, {
       items: steps,

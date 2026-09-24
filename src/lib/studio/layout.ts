@@ -7,17 +7,40 @@
  */
 import type { Responsive } from './theme';
 
+/**
+ * Ordre d'origine de la page d'accueil : qui je suis → comment mon univers est organisé → ce que je sais
+ * faire → ce que j'ai réalisé → me contacter. (Le Manifeste, repris dans « À propos », est masqué par défaut.)
+ */
 export const SECTION_KEYS = [
   'hero',
   'marquee',
-  'manifesto',
+  'about',
+  'ecosystem',
   'expertises',
   'projects',
-  'ecosystem',
-  'about',
   'contact',
+  'manifesto',
 ] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
+
+/** Sections masquées tant que l'administration ne les affiche pas explicitement. */
+export const HIDDEN_BY_DEFAULT: readonly SectionKey[] = ['manifesto'];
+
+/** Visibilité d'une section : réglage, sinon valeur d'origine. */
+export function sectionVisible(layout: LayoutSettings = {}, key: SectionKey | 'footer'): boolean {
+  const own = layout.sections?.[key]?.visible;
+  if (typeof own === 'boolean') return own;
+  return !(HIDDEN_BY_DEFAULT as readonly string[]).includes(key);
+}
+
+/** Sections numérotées (01, 02…) dans leur ordre d'affichage. */
+export const NUMBERED_SECTIONS: readonly SectionKey[] = [
+  'about',
+  'ecosystem',
+  'expertises',
+  'projects',
+  'contact',
+];
 
 export type ContentFieldType = 'text' | 'textarea' | 'lines' | 'paragraphs';
 
@@ -232,12 +255,25 @@ export interface SectionProps {
   id?: string;
   style?: string;
   attrs: Record<string, string>;
+  /** Numéro affiché dans le surtitre (« 01 »…), selon la position réelle de la section. */
+  index?: string;
 }
 
-export function sectionProps(layout: LayoutSettings, key: SectionKey): SectionProps {
+export function sectionProps(
+  layout: LayoutSettings,
+  key: SectionKey,
+  order: readonly SectionKey[] = [],
+): SectionProps {
   const look = sectionStyle(layout.sections?.[key]);
   const anchor = sectionAnchor(layout, key);
-  return { id: anchor || undefined, style: look.style || undefined, attrs: look.attrs };
+  const numbered = order.filter((k) => NUMBERED_SECTIONS.includes(k));
+  const position = numbered.indexOf(key);
+  return {
+    id: anchor || undefined,
+    style: look.style || undefined,
+    attrs: look.attrs,
+    index: position >= 0 ? String(position + 1).padStart(2, '0') : undefined,
+  };
 }
 
 /* ------------------------------------------------------------------ navigation */
@@ -263,10 +299,10 @@ export interface NavigationSettings {
 
 /** Liens d'origine (identiques à l'en-tête historique). `labelKey` : clé de `t.nav`. */
 export const DEFAULT_LINKS: readonly (NavLink & { labelKey: string })[] = [
+  { id: 'a-propos', target: 'about', labelKey: 'about' },
+  { id: 'ecosysteme', target: 'ecosystem', labelKey: 'ecosystem' },
   { id: 'expertises', target: 'expertises', labelKey: 'expertises' },
   { id: 'projets', target: 'projects', labelKey: 'projects' },
-  { id: 'ecosysteme', target: 'ecosystem', labelKey: 'ecosystem' },
-  { id: 'a-propos', target: 'about', labelKey: 'about' },
   { id: 'contact', target: 'contact', labelKey: 'contact', button: true },
 ];
 

@@ -91,7 +91,15 @@ const brands = data.entity.map((e) => t.entities[e].name).join(' · ');
       {data.summary && (
         <p class="text-paper-muted mt-2.5 text-[0.95rem] leading-relaxed">{data.summary}</p>
       )}
-      <p class="text-paper-faint mt-3 text-xs tracking-wide">{brands}</p>
+      <p class="text-paper-faint mt-3 text-xs tracking-wide">
+        {brands}
+        {data.technologies.length > 0 && (
+          <span class="text-paper-muted">
+            {' — '}
+            {data.technologies.slice(0, 4).join(' · ')}
+          </span>
+        )}
+      </p>
     </div>
   </a>
 </article>

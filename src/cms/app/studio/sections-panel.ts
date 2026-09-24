@@ -9,6 +9,7 @@ import {
   SECTIONS,
   isAnchorValid,
   sectionOrder,
+  sectionVisible,
   type LayoutSettings,
   type SectionKey,
   type SectionSettings,
@@ -67,7 +68,7 @@ export function renderSectionsPanel(
     };
     const item = (key: SectionKey | 'footer', index: number) => {
       const def = SECTIONS.find((s) => s.key === key)!;
-      const visible = own(key).visible !== false;
+      const visible = sectionVisible(layout(), key);
       return h(
         'li',
         { class: `st-sec${visible ? '' : ' is-hidden'}` },
@@ -335,8 +336,9 @@ export function renderSectionsPanel(
       ),
       row(
         'Visible',
-        toggleControl(s.visible !== false, (v) =>
-          setSection(key, 'visible', v ? undefined : false),
+        toggleControl(sectionVisible(layout(), key as SectionKey), (v) =>
+          // la valeur d'origine n'est pas enregistrée (le Manifeste est masqué par défaut)
+          setSection(key, 'visible', v === sectionVisible({}, key as SectionKey) ? undefined : v),
         ),
       ),
       key === 'marquee' || key === 'footer'

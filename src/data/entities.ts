@@ -22,5 +22,32 @@ export const entityDomains: Record<Exclude<EntitySlug, 'personal'>, readonly Dom
   jeefsys: ['robotique', 'automatisation', 'electronique-electrotechnique', 'prototypage'],
 };
 
+/**
+ * Univers de chaque entité (section « Écosystème ») : mots-clés affichés sur chaque pôle.
+ * `key` → texte dans src/i18n/ui/*.ts (ecosystem.keywords) ; `domain` → lien vers les projets de ce domaine
+ * (seulement s'il en existe).
+ */
+export const entityUniverse: Record<
+  Exclude<EntitySlug, 'personal'>,
+  readonly { key: string; domain?: DomainSlug }[]
+> = {
+  clicgraph: [
+    { key: 'creation' },
+    { key: '3d', domain: '3d-architecture' },
+    { key: 'architecture', domain: '3d-architecture' },
+    { key: 'visualisation', domain: '3d-architecture' },
+    { key: 'design-graphique', domain: 'design-graphique' },
+    { key: 'impression-3d', domain: 'impression-3d-fabrication' },
+    { key: 'fabrication', domain: 'impression-3d-fabrication' },
+  ],
+  jeefsys: [
+    { key: 'robotique', domain: 'robotique' },
+    { key: 'automatisation', domain: 'automatisation' },
+    { key: 'electronique', domain: 'electronique-electrotechnique' },
+    { key: 'embarque', domain: 'electronique-electrotechnique' },
+    { key: 'prototypage', domain: 'prototypage' },
+  ],
+};
+
 export const projectStatuses = ['concept', 'en-cours', 'prototype', 'termine'] as const;
 export type ProjectStatus = (typeof projectStatuses)[number];

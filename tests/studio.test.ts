@@ -11,7 +11,9 @@ import {
   navLinks,
   sectionAnchor,
   sectionOrder,
+  sectionProps,
   sectionStyle,
+  sectionVisible,
 } from '@/lib/studio/layout';
 import { SETTINGS_SCHEMAS } from '@/schemas/settings';
 import * as schemas from '@/schemas/settings';
@@ -119,6 +121,20 @@ describe('Animation Studio : résolution des réglages', () => {
 describe('Sections & navigation', () => {
   it('ordre : réglé, complété des sections oubliées, jamais de perte ni de doublon', () => {
     expect(sectionOrder({})).toEqual([...SECTION_KEYS]);
+    // parcours : qui je suis → mon univers → ce que je sais faire → mes réalisations → contact
+    expect(sectionOrder({}).filter((k) => sectionVisible({}, k))).toEqual([
+      'hero',
+      'marquee',
+      'about',
+      'ecosystem',
+      'expertises',
+      'projects',
+      'contact',
+    ]);
+    expect(sectionVisible({ sections: { manifesto: { visible: true } } }, 'manifesto')).toBe(true);
+    expect(sectionVisible({ sections: { about: { visible: false } } }, 'about')).toBe(false);
+    expect(sectionProps({}, 'expertises', sectionOrder({})).index).toBe('03');
+    expect(sectionProps({}, 'hero', sectionOrder({})).index).toBeUndefined();
     const order = sectionOrder({ order: ['contact', 'hero', 'contact', 'inconnue'] });
     expect(order.slice(0, 2)).toEqual(['contact', 'hero']);
     expect(new Set(order).size).toBe(SECTION_KEYS.length);
@@ -161,10 +177,10 @@ describe('Sections & navigation', () => {
 
   it('navigation : liens d’origine sans réglage', () => {
     expect(navLinks({}).map((l) => l.id)).toEqual([
+      'a-propos',
+      'ecosysteme',
       'expertises',
       'projets',
-      'ecosysteme',
-      'a-propos',
       'contact',
     ]);
     expect(

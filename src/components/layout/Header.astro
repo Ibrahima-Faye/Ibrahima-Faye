@@ -2,7 +2,7 @@
 import { localizedPath, useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
 import { settings } from '@/lib/settings';
-import { navLinks, sectionAnchor, type SectionKey } from '@/lib/studio/layout';
+import { navLinks, sectionAnchor, sectionVisible, type SectionKey } from '@/lib/studio/layout';
 import { safeHref } from '@/lib/studio/content';
 import LinkIcon from '@/components/ui/LinkIcon.astro';
 
@@ -29,7 +29,7 @@ const nav = navLinks(navigation)
     const page = l.target.startsWith('page:') ? l.target.slice(5) : '';
     const key = l.target as SectionKey;
     const external = Boolean(url);
-    const hidden = !page && !external && layout.sections?.[key]?.visible === false;
+    const hidden = !page && !external && !sectionVisible(layout, key);
     const anchor = page || external ? '' : sectionAnchor(layout, key);
     const label =
       l.label?.trim() || (l.labelKey ? t.nav[l.labelKey as keyof typeof t.nav] : '') || l.id;

@@ -37,16 +37,16 @@ Chaque `git push` sur `main` redéploie le site. Les autres branches obtiennent 
 ## 3. Renseigner l'adresse du site
 
 Le site a besoin de connaître son adresse publique pour le référencement (URL canonique, sitemap, images de partage).
-Dans les réglages du projet chez l'hébergeur, ajouter la variable d'environnement :
+Il utilise par défaut le domaine officiel ; pour publier à une autre adresse, ajouter chez l'hébergeur la variable :
 
 ```
 SITE_URL = https://votre-domaine.com
 ```
 
-Sans elle, le build utilise les variables natives de l'hébergeur (Netlify `URL`, Cloudflare `CF_PAGES_URL`,
-Vercel `VERCEL_PROJECT_PRODUCTION_URL`), ce qui fonctionne pour l'adresse `*.vercel.app` / `*.pages.dev` / `*.netlify.app`.
-**Une fois le domaine définitif branché, définir `SITE_URL`.** Ajouter aussi dans `public/robots.txt` la ligne
-`Sitemap: https://votre-domaine.com/sitemap-index.xml`.
+Sans elle, le build utilise le domaine de production officiel, **https://ibrahimafye.com** (`PRODUCTION_URL`
+dans `astro.config.mjs`) — c'est le cas du déploiement actuel (Cloudflare Workers, Worker « Ibrahima-Faye »).
+`SITE_URL` ne sert qu'à publier ailleurs (domaine de test). En cas de changement de domaine : modifier
+`PRODUCTION_URL` et la ligne `Sitemap:` de `public/robots.txt`.
 
 ## 4. Brancher un nom de domaine
 
@@ -58,7 +58,7 @@ instructions DNS. Le certificat HTTPS est émis automatiquement.
 - [ ] Coordonnées renseignées dans `src/config/site.ts` (e-mail, réseaux, éventuellement formulaire).
 - [ ] Photo de portrait déposée : `src/assets/portrait.jpg` (facultatif ; sans elle, un monogramme s'affiche).
 - [ ] Projets réels ajoutés, sans `draft: true` (voir `AJOUTER-UN-PROJET.md`).
-- [ ] `SITE_URL` défini chez l'hébergeur.
+- [ ] Domaine de production : `PRODUCTION_URL` dans `astro.config.mjs` (https://ibrahimafye.com) ou `SITE_URL`.
 - [ ] `npm run check` et `npm run build` passent sans erreur.
 - [ ] Vidéos compressées (voir les limites de taille ci-dessus).
 

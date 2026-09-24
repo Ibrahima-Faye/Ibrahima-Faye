@@ -1,8 +1,8 @@
 ---
 import { domainSlugs } from '@/data/domains';
-import { useTranslations, type Locale } from '@/i18n';
+import { localizedPath, useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
-import { countBy, getFeaturedProjects, getProjects } from '@/lib/projects';
+import { countBy, getFeaturedProjects, getProjects, projectUrl } from '@/lib/projects';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Hero from '@/components/sections/Hero.astro';
 import Marquee from '@/components/sections/Marquee.astro';
@@ -13,7 +13,7 @@ import Ecosystem from '@/components/sections/Ecosystem.astro';
 import About from '@/components/sections/About.astro';
 import Contact from '@/components/sections/Contact.astro';
 import { settings } from '@/lib/settings';
-import { sectionOrder, sectionProps, type SectionKey } from '@/lib/studio/layout';
+import { sectionOrder, sectionProps, sectionVisible, type SectionKey } from '@/lib/studio/layout';
 
 interface Props {
   locale: Locale;
@@ -27,7 +27,7 @@ const counts = countBy(projects);
 
 // Sections : ordre et visibilité réglables (src/settings/layout.json) ; sans réglage, l'ordre d'origine.
 const layout = settings.layout;
-const order = sectionOrder(layout).filter((key) => layout.sections?.[key]?.visible !== false);
+const order = sectionOrder(layout).filter((key) => sectionVisible(layout, key));
 const COMPONENTS = {
   hero: Hero,
   marquee: Marquee,
@@ -39,7 +39,17 @@ const COMPONENTS = {
   contact: Contact,
 } satisfies Record<SectionKey, unknown>;
 const extra: Partial<Record<SectionKey, Record<string, unknown>>> = {
-  expertises: { counts: counts.domainCount },
+  expertises: {
+    counts: counts.domainCount,
+    // compétence → projet : chaque domaine et chaque outil renvoient aux projets publiés
+    projects: projects.map((p) => ({
+      id: p.id,
+      title: p.data.title,
+      href: localizedPath(projectUrl(p), locale),
+      category: p.data.category,
+      technologies: p.data.technologies,
+    })),
+  },
   projects: { projects: featured },
   ecosystem: { counts: counts.entityCount },
 };
@@ -80,6 +90,6 @@ const jsonLd = {
 <BaseLayout page="home" locale={locale} path="/" jsonLd={jsonLd}>
   {order.map((key) => {
     const Section = COMPONENTS[key] as any;
-    return <Section locale={locale} section={sectionProps(layout, key)} {...extra[key]} />;
+    return <Section locale={locale} section={sectionProps(layout, key, order)} {...extra[key]} />;
   })}
 </BaseLayout>

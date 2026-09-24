@@ -94,7 +94,7 @@ const nothingConfigured = channels.length === 0 && socials.length === 0 && !hasF
 
   <div class="container-x">
     <p class="eyebrow mb-8 flex items-center gap-4" data-reveal="fade" data-anim="contact.eyebrow">
-      <span class="text-paper-faint">05</span>
+      {section?.index && <span class="text-paper-faint">{section.index}</span>}
       <span class="bg-mauve-400/50 h-px w-10"></span>
       <span>{t.contact.eyebrow}</span>
     </p>

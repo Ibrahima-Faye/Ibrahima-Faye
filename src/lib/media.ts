@@ -2,7 +2,7 @@ import type { ImageMetadata } from 'astro';
 import type { CollectionEntry } from 'astro:content';
 import { getImage } from 'astro:assets';
 import { defaultSpan, DEFAULT_ALIGN, parseRatio, type Align, type Span } from './gallery-layout';
-import { baseOf, effectiveCover, mediaFiles } from './media-rules';
+import { effectiveCover, mediaFiles } from './media-rules';
 import { resolveOutputUrl, type MediaStorage } from './media-storage';
 import { normalizeGallery, type NormalizedBlock, type NormalizedItem } from './gallery/normalize';
 
@@ -115,8 +115,6 @@ export function projectFolder(project: Project): string {
   const parts = (project.filePath ?? '').split('/');
   return parts[parts.length - 2] ?? project.id;
 }
-
-const filename = (path: string) => path.split('/').pop() ?? path;
 
 /** Versions web prêtes d'un projet (manifeste), et accès à leurs fichiers. */
 function webAssets(folder: string) {
@@ -319,31 +317,4 @@ export async function getProjectGallery(
     out.push({ ...block, items });
   }
   return { blocks: out, count };
-}
-
-/* ------------------------------------------------------------------ *
- * Visuel d'un domaine (section « Expertises »)
- * Déposer  src/assets/domaines/<slug-du-domaine>.jpg  (ou .png/.webp/.avif)
- * et/ou    src/assets/domaines/<slug-du-domaine>.mp4  (ou .webm)
- * Sans fichier, une illustration technique (étiquetée comme telle) s'affiche.
- * ------------------------------------------------------------------ */
-const domainImages = import.meta.glob<ImageMetadata>(
-  '/src/assets/domaines/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP,AVIF}',
-  { eager: true, import: 'default' },
-);
-const domainVideos = import.meta.glob<string>('/src/assets/domaines/*.{mp4,webm,MP4,WEBM}', {
-  eager: true,
-  import: 'default',
-  query: '?url',
-});
-
-export interface DomainMedia {
-  image?: ImageMetadata;
-  video?: string;
-}
-
-export function getDomainMedia(slug: string): DomainMedia {
-  const find = <T>(modules: Record<string, T>) =>
-    Object.entries(modules).find(([path]) => baseOf(filename(path)).toLowerCase() === slug)?.[1];
-  return { image: find(domainImages), video: find(domainVideos) };
 }

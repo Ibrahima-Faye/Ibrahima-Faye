@@ -211,9 +211,35 @@ export const contentSchema = z.looseObject({
         .optional(),
     })
     .optional(),
+  tools: z
+    .looseObject({
+      items: z
+        .array(
+          z.looseObject({
+            id: z.string().min(1).max(60),
+            name: shortText.optional(),
+            icon: shortText.optional(),
+            usage: shortText.optional(),
+            domain: z.string().optional(),
+            visible: z.boolean().optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
   about: z
     .looseObject({
       steps: z.array(z.looseObject({ title: shortText, text: text })).optional(),
+      timeline: z
+        .array(
+          z.looseObject({
+            id: z.string().min(1).max(60),
+            period: shortText.optional(),
+            title: shortText,
+            text: text.optional(),
+          }),
+        )
+        .optional(),
       blocks: z
         .array(
           z.looseObject({
