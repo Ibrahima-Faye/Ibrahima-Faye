@@ -44,6 +44,8 @@ export const themeSchema = z.looseObject({
       tagline: z.string().max(160).optional(),
       logo: z.string().max(200).optional(),
       favicon: z.string().max(200).optional(),
+      photo: z.string().max(200).optional(),
+      mark: z.enum(['monogram', 'photo', 'logo']).optional(),
     })
     .optional(),
 });
@@ -155,6 +157,18 @@ const link = z.looseObject({ label: shortText, href: shortText });
 export const contentSchema = z.looseObject({
   version: z.number().optional(),
   texts: z.record(z.string(), z.union([text, z.array(text)])).optional(),
+  links: z
+    .array(
+      z.looseObject({
+        id: z.string().min(1).max(60),
+        label: shortText,
+        href: shortText.optional(),
+        icon: z.string().max(40).optional(),
+        category: z.enum(['social', 'contact', 'other']).optional(),
+        visible: z.boolean().optional(),
+      }),
+    )
+    .optional(),
   hero: z
     .looseObject({
       description: text.optional(),

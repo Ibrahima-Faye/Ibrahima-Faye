@@ -1,7 +1,7 @@
 /**
  * Contenu du site — textes et contenus éditoriaux du portfolio, sans toucher au code.
  *
- *   #/contenu/accueil · expertises · projets · ecosysteme · a-propos · contact · footer · navigation
+ *   #/contenu/accueil · identite · expertises · projets · ecosysteme · a-propos · contact · footer · navigation
  *
  * Enregistrement MANUEL (bouton « Enregistrer », Ctrl+S) ; « Annuler » revient à la dernière version
  * enregistrée ; « Versions » recharge une version précédente (historique .cms/historique/reglages/).
@@ -17,6 +17,7 @@ import { EDITORS } from '../content/editors';
 
 const TABS: { id: ContentTab; label: string; focus?: string; doc: SettingsName }[] = [
   { id: 'accueil', label: 'Accueil', focus: 'hero.section', doc: 'content' },
+  { id: 'identite', label: 'Identité & Liens', focus: 'contact.section', doc: 'content' },
   { id: 'expertises', label: 'Expertises', focus: 'expertises.section', doc: 'content' },
   { id: 'projets', label: 'Projets', focus: 'projects.section', doc: 'content' },
   { id: 'ecosysteme', label: 'Écosystème', focus: 'ecosystem.section', doc: 'content' },

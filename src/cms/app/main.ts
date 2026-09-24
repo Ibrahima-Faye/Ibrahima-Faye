@@ -24,6 +24,7 @@ import type { ContentTab, StudioTab } from './types';
 
 const CONTENT_TABS: ContentTab[] = [
   'accueil',
+  'identite',
   'expertises',
   'projets',
   'ecosysteme',

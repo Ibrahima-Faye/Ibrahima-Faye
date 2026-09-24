@@ -4,7 +4,10 @@
  */
 import { api } from '../api';
 import { h, icon, toast } from '../ui';
-import { getPath, row, selectControl, setPath, toggleControl } from '../studio/controls';
+import { getPath, row, segmented, selectControl, setPath, toggleControl } from '../studio/controls';
+import { LINK_ICONS, isLinkIcon } from '@/lib/icons';
+import { linkHref, linkItems, type LinkItem } from '@/lib/studio/content';
+import type { ThemeSettings } from '@/lib/studio/theme';
 import type { ContentTab, Meta } from '../types';
 import type {
   AboutBlock,
@@ -12,7 +15,6 @@ import type {
   ContentSettings,
   EntityItem,
   ExpertiseItem,
-  SocialItem,
 } from '@/lib/studio/content';
 import {
   dictField,
@@ -72,14 +74,8 @@ const domainOptions = (ctx: Ctx) =>
 
 /* ================================================================== Accueil */
 function home(ctx: Ctx) {
-  const identityOrigin = ctx.meta.studio?.contact?.name ?? 'Ibrahima Faye';
   return [
-    heading(
-      'Identité',
-      'Le nom apparaît dans l’en-tête, le Hero, le pied de page et le référencement.',
-    ),
-    valueField(ctx, 'Nom', 'theme', 'identity.name', identityOrigin),
-    heading('Hero'),
+    heading('Hero', 'Le nom, le monogramme et la photo se modifient dans « Identité & Liens ».'),
     dictField(ctx, 'Petit titre (au-dessus du nom)', 'hero.eyebrow'),
     dictField(ctx, 'Grand titre (une ligne par ligne)', 'hero.lines', 'lines'),
     dictField(ctx, 'Slogan (séparateur « · »)', 'hero.subtitle'),
@@ -114,6 +110,185 @@ function home(ctx: Ctx) {
     dictField(ctx, 'Titre du site', 'meta.siteTitle'),
     dictField(ctx, 'Description', 'meta.description', 'text'),
     dictField(ctx, 'Métier (référencement, pied de page)', 'meta.jobTitle'),
+  ];
+}
+
+/* ================================================================== Identité & Liens */
+/** Icône d'un lien (mêmes tracés que le site : src/lib/icons.ts). */
+function linkIcon(name?: string, size = 18) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', String(size));
+  svg.setAttribute('height', String(size));
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.6');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = LINK_ICONS[isLinkIcon(name) ? name : 'link'].path;
+  return svg;
+}
+
+const URL_HINTS: Record<string, string> = {
+  mail: 'adresse@exemple.com',
+  phone: '+221 77 000 00 00',
+  whatsapp: '+221 77 000 00 00 (ou https://wa.me/…)',
+};
+
+function identity(ctx: Ctx) {
+  const id = ctx.state.get<ThemeSettings>('theme').identity ?? {};
+  const setId = (key: string, v: unknown) =>
+    ctx.state.change('theme', (d) => setPath(d, `identity.${key}`, v));
+  const origin = ctx.meta.studio?.contact ?? {};
+  const implicit = id.logo ? 'logo' : 'monogram';
+  const mark = id.mark ?? implicit;
+
+  // aperçu du symbole de l'en-tête
+  const preview = h(
+    'div',
+    { class: 'ce-mark' },
+    mark === 'photo' && id.photo
+      ? h('img', { src: id.photo, alt: '', class: 'ce-mark-photo' })
+      : mark === 'logo' && id.logo
+        ? h('img', { src: id.logo, alt: '', class: 'ce-mark-logo' })
+        : h('span', { class: 'ce-mark-mono' }, id.initials || 'IF'),
+    h('strong', null, id.name || origin.name || 'Ibrahima Faye'),
+  );
+
+  const items = linkItems(content(ctx));
+  const saveLinks = (list: LinkItem[]) => change(ctx, (c) => (c.links = list));
+  let n = 1;
+  while (items.some((l) => l.id === `lien-${n}`)) n++;
+
+  const urlRow = (l: LinkItem, update: (patch: Partial<LinkItem>) => void) => {
+    const input = h('input', {
+      type: 'text',
+      class: 'st-input',
+      value: l.href ?? '',
+      placeholder: URL_HINTS[l.icon ?? ''] ?? 'https://…',
+    });
+    const hint = h('p', { class: 'st-hint' });
+    const show = () => {
+      const v = input.value.trim();
+      const href = linkHref({ href: v, icon: l.icon });
+      hint.textContent = !v
+        ? 'Vide : le lien n’est pas affiché sur le site.'
+        : href
+          ? `→ ${href}`
+          : '⚠ Adresse non reconnue (https://…, e-mail ou numéro de téléphone).';
+      hint.classList.toggle('is-warn', Boolean(v && !href));
+    };
+    input.addEventListener('input', () => {
+      update({ href: input.value.trim() || undefined });
+      show();
+    });
+    show();
+    return row('URL / adresse', h('div', null, input, hint));
+  };
+
+  const iconRow = (l: LinkItem, update: (patch: Partial<LinkItem>) => void) => {
+    const holder = h('span', { class: 'ce-icon-preview' }, linkIcon(l.icon, 20));
+    const select = selectControl<string>(
+      l.icon,
+      (Object.keys(LINK_ICONS) as (keyof typeof LINK_ICONS)[]).map((k) => ({
+        value: k,
+        label: LINK_ICONS[k].label,
+      })),
+      (v) => {
+        update({ icon: v });
+        holder.replaceChildren(linkIcon(v, 20));
+      },
+    );
+    return row('Icône', h('div', { class: 'ce-icon-row' }, holder, select));
+  };
+
+  return [
+    heading(
+      'Identité',
+      'Nom, symbole de l’en-tête et photo de profil (aussi utilisée dans À propos s’il n’y a pas de portrait).',
+    ),
+    preview,
+    valueField(ctx, 'Nom affiché', 'theme', 'identity.name', origin.name ?? 'Ibrahima Faye'),
+    valueField(ctx, 'Initiales / monogramme', 'theme', 'identity.initials', 'IF'),
+    valueField(
+      ctx,
+      'Texte court / rôle',
+      'theme',
+      'identity.tagline',
+      String(dict(ctx, 'meta.jobTitle') ?? ''),
+      'line',
+      'Pied de page et référencement.',
+    ),
+    row(
+      'Symbole dans l’en-tête',
+      segmented(
+        mark,
+        [
+          { value: 'monogram', label: 'Monogramme' },
+          { value: 'photo', label: 'Photo' },
+          { value: 'logo', label: 'Logo' },
+        ],
+        (v) => {
+          setId('mark', v === implicit ? undefined : v);
+          ctx.redraw();
+        },
+      ),
+      {
+        hint:
+          mark === 'photo' && !id.photo
+            ? 'Choisis une photo ci-dessous — en attendant, le monogramme reste affiché.'
+            : mark === 'logo' && !id.logo
+              ? 'Choisis un logo ci-dessous — en attendant, le monogramme reste affiché.'
+              : undefined,
+      },
+    ),
+    row(
+      'Photo de profil',
+      imagePicker(id.photo, (path) => (setId('photo', path), ctx.redraw())),
+    ),
+    row(
+      'Logo',
+      imagePicker(id.logo, (path) => (setId('logo', path), ctx.redraw())),
+    ),
+    heading(
+      'Liens',
+      'Réseaux et contact. « Réseau » : boutons de Contact, pied de page, menu mobile. « Contact » : lignes de la section Contact. Un lien sans adresse ou masqué n’est pas affiché.',
+    ),
+    listEditor<LinkItem>(ctx, {
+      items,
+      save: saveLinks,
+      title: (l) => `${l.label || 'Lien'}${l.href ? '' : ' — (vide)'}`,
+      visible: (l) => l.visible !== false,
+      toggleVisible: (l) => ({ ...l, visible: l.visible === false ? undefined : false }),
+      removable: () => true,
+      add: {
+        label: 'Ajouter un lien',
+        create: () => ({
+          id: `lien-${n}`,
+          label: 'Nouveau lien',
+          icon: 'link',
+          category: 'social',
+        }),
+      },
+      body: (l, _k, update) => [
+        plainInput('Nom', l.label, 'Nom affiché', (v) => update({ label: v ?? '' })),
+        urlRow(l, update),
+        iconRow(l, update),
+        row(
+          'Catégorie',
+          selectControl<string>(
+            l.category ?? 'social',
+            [
+              { value: 'social', label: 'Réseau social' },
+              { value: 'contact', label: 'Contact' },
+              { value: 'other', label: 'Autre (non affiché automatiquement)' },
+            ],
+            (v) => update({ category: (v ?? 'social') as LinkItem['category'] }),
+          ),
+        ),
+      ],
+    }),
   ];
 }
 
@@ -455,11 +630,6 @@ function about(ctx: Ctx) {
 /* ================================================================== Contact */
 function contact(ctx: Ctx) {
   const origin = ctx.meta.studio?.contact ?? {};
-  const socials = content(ctx).contact?.socials ?? [];
-  const saveSocials = (list: SocialItem[]) =>
-    change(ctx, (c) =>
-      setPath(c as Record<string, unknown>, 'contact.socials', list.length ? list : undefined),
-    );
   const labels: [string, string][] = [
     ['Libellé e-mail', 'contact.email'],
     ['Libellé téléphone', 'contact.phone'],
@@ -481,16 +651,7 @@ function contact(ctx: Ctx) {
     valueField(ctx, 'Texte d’introduction', 'content', 'contact.intro', '', 'rich', 'Facultatif.'),
     heading(
       'Coordonnées',
-      'Centralisées : utilisées par la section Contact (et le référencement). Vide = non affiché.',
-    ),
-    valueField(ctx, 'E-mail', 'content', 'contact.email', origin.email ?? ''),
-    valueField(ctx, 'Téléphone', 'content', 'contact.phone', origin.phone ?? ''),
-    valueField(
-      ctx,
-      'WhatsApp (lien https://wa.me/…)',
-      'content',
-      'contact.whatsapp',
-      origin.whatsapp ?? '',
+      'E-mail, téléphone, WhatsApp et réseaux sociaux : « Identité & Liens » (liens de la catégorie Contact → section Contact).',
     ),
     valueField(ctx, 'Localisation', 'content', 'contact.location', origin.location ?? ''),
     valueField(
@@ -511,18 +672,6 @@ function contact(ctx: Ctx) {
       'line',
       'Clé « access_key » publique du service (jamais un mot de passe).',
     ),
-    heading('Réseaux sociaux'),
-    listEditor<SocialItem>(ctx, {
-      items: socials,
-      save: saveSocials,
-      title: (s) => s.label || 'Réseau',
-      removable: () => true,
-      add: { label: 'Ajouter un réseau', create: () => ({ label: 'LinkedIn', href: 'https://' }) },
-      body: (s, _k, update) => [
-        plainInput('Nom', s.label, 'LinkedIn', (v) => update({ label: v ?? '' })),
-        plainInput('Adresse', s.href, 'https://…', (v) => update({ href: v ?? '' })),
-      ],
-    }),
     heading('Libellés'),
     labels.map(([label, path]) => dictField(ctx, label, path)),
   ];
@@ -617,6 +766,7 @@ function footer(ctx: Ctx) {
 
 export const EDITORS: Record<Exclude<ContentTab, 'navigation'>, (ctx: Ctx) => unknown[]> = {
   accueil: home,
+  identite: identity,
   expertises,
   projets: projects,
   ecosysteme: ecosystem,

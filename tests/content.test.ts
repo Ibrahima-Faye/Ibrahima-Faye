@@ -4,9 +4,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { domainSlugs } from '@/data/domains';
 import {
+  activeLinks,
   entityItems,
   expertiseRows,
   inlineMarkdown,
+  linkHref,
+  linkItems,
   markdownBlocks,
   safeHref,
 } from '@/lib/studio/content';
@@ -116,5 +119,79 @@ describe('Contenu du site : historique des versions', () => {
     await expect(settings.readHistory('content', '../theme.json')).rejects.toMatchObject({
       status: 400,
     });
+  });
+});
+
+describe('Identité & Liens', () => {
+  it('liens par défaut : 7 entrées vides (rien affiché), anciennes coordonnées reprises', () => {
+    expect(linkItems({}).map((l) => l.id)).toEqual([
+      'instagram',
+      'whatsapp',
+      'linkedin',
+      'github',
+      'youtube',
+      'email',
+      'telephone',
+    ]);
+    expect(activeLinks({})).toEqual([]);
+    const legacy = linkItems({
+      contact: { email: 'a@b.fr', socials: [{ label: 'Behance', href: 'https://behance.net/x' }] },
+    });
+    expect(legacy.find((l) => l.id === 'email')?.href).toBe('a@b.fr');
+    expect(legacy.at(-1)).toMatchObject({ label: 'Behance', icon: 'behance', category: 'social' });
+  });
+
+  it('adresses complétées : e-mail, téléphone, WhatsApp, domaine ; javascript: refusé', () => {
+    expect(linkHref({ href: 'moi@exemple.com', icon: 'mail' })).toBe('mailto:moi@exemple.com');
+    expect(linkHref({ href: '+221 77 123 45 67', icon: 'phone' })).toBe('tel:+221771234567');
+    expect(linkHref({ href: '+221 77 123 45 67', icon: 'whatsapp' })).toBe(
+      'https://wa.me/221771234567',
+    );
+    expect(linkHref({ href: 'github.com/moi', icon: 'github' })).toBe('https://github.com/moi');
+    expect(linkHref({ href: 'https://x.com/moi' })).toBe('https://x.com/moi');
+    expect(linkHref({ href: 'javascript:alert(1)' })).toBeUndefined();
+    expect(linkHref({ href: 'n’importe quoi' })).toBeUndefined();
+  });
+
+  it('liens actifs : masqués, vides et invalides exclus ; catégorie ; ordre conservé', () => {
+    const content = {
+      links: [
+        {
+          id: 'a',
+          label: 'GitHub',
+          href: 'github.com/moi',
+          icon: 'github',
+          category: 'social' as const,
+        },
+        { id: 'b', label: 'Masqué', href: 'https://a.b', visible: false },
+        {
+          id: 'c',
+          label: 'E-mail',
+          href: 'moi@exemple.com',
+          icon: 'mail',
+          category: 'contact' as const,
+        },
+        { id: 'd', label: 'Vide', href: '' },
+      ],
+    };
+    expect(activeLinks(content).map((l) => l.id)).toEqual(['a', 'c']);
+    expect(activeLinks(content, 'contact')).toMatchObject([
+      { id: 'c', display: 'moi@exemple.com' },
+    ]);
+    expect(activeLinks(content, 'social')).toMatchObject([
+      { id: 'a', url: 'https://github.com/moi' },
+    ]);
+  });
+
+  it('schémas : liens et symbole de l’en-tête', () => {
+    expect(
+      SETTINGS_SCHEMAS.content.safeParse({ links: [{ id: 'x', label: 'X', category: 'autre' }] })
+        .success,
+    ).toBe(false);
+    expect(
+      SETTINGS_SCHEMAS.theme.safeParse({ identity: { mark: 'photo', photo: '/identite/moi.jpg' } })
+        .success,
+    ).toBe(true);
+    expect(SETTINGS_SCHEMAS.theme.safeParse({ identity: { mark: 'avatar' } }).success).toBe(false);
   });
 });

@@ -3589,3 +3589,66 @@ select.st-input {
   font-size: 0.72rem;
   color: #f3cf8c;
 }
+
+/* ============================================================ Identité & Liens */
+.ce-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.8rem 1rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgb(200 169 255 / 0.12);
+  background: rgb(4 5 13 / 0.6);
+}
+
+.ce-mark strong {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.ce-mark-mono,
+.ce-mark-photo {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 1px solid rgb(200 169 255 / 0.4);
+  background: rgb(11 18 51 / 0.6);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-lavender-100);
+  object-fit: cover;
+}
+
+.ce-mark-logo {
+  height: 2.25rem;
+  width: auto;
+  max-width: 9rem;
+  object-fit: contain;
+}
+
+.ce-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ce-icon-preview {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 50%;
+  border: 1px solid rgb(200 169 255 / 0.3);
+  color: var(--color-lavender-100);
+}
+
+.st-hint.is-warn {
+  color: #f3cf8c;
+}

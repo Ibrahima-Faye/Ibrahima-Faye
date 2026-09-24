@@ -2,8 +2,9 @@
 import { useTranslations, type Locale } from '@/i18n';
 import { site, type SocialLink } from '@/config/site';
 import { settings } from '@/lib/settings';
-import { markdownBlocks } from '@/lib/studio/content';
-import Icon, { type IconName } from '@/components/ui/Icon.astro';
+import { activeLinks, markdownBlocks } from '@/lib/studio/content';
+import Icon from '@/components/ui/Icon.astro';
+import LinkIcon from '@/components/ui/LinkIcon.astro';
 import type { SectionProps } from '@/lib/studio/layout';
 
 interface Props {
@@ -20,12 +21,22 @@ interface Channel {
   label: string;
   value: string;
   href: string;
-  icon: IconName;
+  icon: string;
   external?: boolean;
 }
 
-// Seules les coordonnées réellement renseignées dans src/config/site.ts sont affichées.
-const channels: Channel[] = [
+// Liens de contact (Contenu du site → Identité & Liens) : tous ceux de la catégorie « Contact », dans l'ordre choisi.
+const contactLinks: Channel[] = settings.content.links
+  ? activeLinks(settings.content, 'contact').map((l) => ({
+      label: l.label,
+      value: l.display,
+      href: l.url,
+      icon: l.icon ?? 'link',
+      external: /^https?:/i.test(l.url),
+    }))
+  : [];
+// Sinon : seules les coordonnées réellement renseignées (src/config/site.ts, Contact) sont affichées.
+const legacyChannels = [
   contact.email && {
     label: t.contact.email,
     value: contact.email,
@@ -45,6 +56,9 @@ const channels: Channel[] = [
     icon: 'message' as const,
     external: true,
   },
+].filter(Boolean) as Channel[];
+const channels: Channel[] = [
+  ...(settings.content.links ? contactLinks : legacyChannels),
   contact.location && {
     label: t.contact.location,
     value: contact.location,
@@ -149,6 +163,7 @@ const nothingConfigured = channels.length === 0 && socials.length === 0 && !hasF
                     target="_blank"
                     rel="noopener noreferrer"
                   >
+                    {s.icon && <LinkIcon name={s.icon} class="size-4" />}
                     {s.label}
                     <span class="sr-only">{t.a11y.externalLink}</span>
                     <Icon name="arrow-up-right" />

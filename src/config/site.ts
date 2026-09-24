@@ -11,6 +11,7 @@
  * src/settings/theme.json) ; les valeurs ci-dessous restent la référence.
  */
 import { settings } from '@/lib/settings';
+import { activeLinks } from '@/lib/studio/content';
 
 const identity = settings.theme.identity ?? {};
 /** Coordonnées modifiées dans l'administration (Contenu du site → Contact) : prioritaires. */
@@ -23,6 +24,8 @@ export interface SocialLink {
   label: string;
   /** URL complète, ex. https://www.linkedin.com/in/... */
   href: string;
+  /** Icône (src/lib/icons.ts). */
+  icon?: string;
 }
 
 export interface SiteConfig {
@@ -76,16 +79,26 @@ export const siteDefaults: SiteConfig = {
 };
 
 const base = siteDefaults;
+/** Liens personnels (Contenu du site → Identité & Liens) : prioritaires sur les anciennes coordonnées. */
+const links = activeLinks(settings.content);
+const byIcon = (icon: string) => links.find((l) => l.icon === icon);
+const email = byIcon('mail')?.url.replace(/^mailto:/, '');
+const phone = byIcon('phone');
+const whatsapp = byIcon('whatsapp')?.url;
 export const site: SiteConfig = {
   name: identity.name?.trim() || base.name,
   initials: identity.initials?.trim() || base.initials,
   contact: {
-    email: pick(contact.email, base.contact.email),
-    phone: pick(contact.phone, base.contact.phone),
-    whatsapp: pick(contact.whatsapp, base.contact.whatsapp),
+    email: email ?? pick(contact.email, base.contact.email),
+    phone: phone ? phone.display : pick(contact.phone, base.contact.phone),
+    whatsapp: whatsapp ?? pick(contact.whatsapp, base.contact.whatsapp),
     formEndpoint: pick(contact.formEndpoint, base.contact.formEndpoint),
     formAccessKey: pick(contact.formAccessKey, base.contact.formAccessKey),
     location: pick(contact.location, base.contact.location),
   },
-  socials: contact.socials?.filter((x) => x.label?.trim() && x.href?.trim()) ?? base.socials,
+  socials: settings.content.links
+    ? links
+        .filter((l) => (l.category ?? 'social') === 'social')
+        .map((l) => ({ label: l.label, href: l.url, icon: l.icon }))
+    : (contact.socials?.filter((x) => x.label?.trim() && x.href?.trim()) ?? base.socials),
 };

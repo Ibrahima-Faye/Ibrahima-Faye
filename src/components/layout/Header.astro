@@ -4,6 +4,7 @@ import { site } from '@/config/site';
 import { settings } from '@/lib/settings';
 import { navLinks, sectionAnchor, type SectionKey } from '@/lib/studio/layout';
 import { safeHref } from '@/lib/studio/content';
+import LinkIcon from '@/components/ui/LinkIcon.astro';
 
 interface Props {
   locale: Locale;
@@ -52,8 +53,22 @@ const activeAttrs = (key: string) => ({
   'data-active': isProjectsPage && key === 'projects' ? 'true' : 'false',
   'aria-current': current === 'projects' && key === 'projects' ? ('page' as const) : undefined,
 });
-const logo = theme.identity?.logo;
+// Symbole (Contenu du site → Identité & Liens) : monogramme, photo ou logo.
+// Sans choix : comportement d'origine (logo s'il existe, sinon monogramme).
+const identity = theme.identity ?? {};
+const mark =
+  identity.mark === 'photo' && identity.photo
+    ? 'photo'
+    : identity.mark === 'monogram'
+      ? 'monogram'
+      : identity.logo && identity.mark !== 'photo'
+        ? 'logo'
+        : 'monogram';
+const logo = identity.logo;
+const photo = identity.photo;
 const numbered = navigation.mobile?.numbered !== false;
+/** Réseaux (Identité & Liens) : icônes en bas du menu mobile. */
+const socials = site.socials;
 ---
 
 <header
@@ -76,8 +91,15 @@ const numbered = navigation.mobile?.numbered !== false;
   ></div>
   <div class="container-x flex h-(--header-height) items-center justify-between gap-6">
     <a href={home} class="group flex items-center gap-3" aria-label={t.a11y.home}>
-      {logo ? (
+      {mark === 'logo' ? (
         <img src={logo} alt="" class="h-9 w-auto max-w-[9rem] object-contain" aria-hidden="true" />
+      ) : mark === 'photo' ? (
+        <img
+          src={photo}
+          alt=""
+          class="border-mauve-300/40 group-hover:border-mauve-300 size-9 rounded-full border object-cover transition-colors duration-500"
+          aria-hidden="true"
+        />
       ) : (
         <span
           class="border-mauve-300/40 bg-navy-900/60 font-display text-lavender-100 group-hover:border-mauve-300 grid size-9 place-items-center rounded-full border text-[0.7rem] font-bold tracking-wider transition-colors duration-500"
@@ -163,6 +185,23 @@ const numbered = navigation.mobile?.numbered !== false;
           {l.mobileLabel}
         </a>
       ))}
+      {socials.length > 0 && (
+        <ul class="mt-8 flex flex-wrap gap-3" aria-label={t.footer.socials}>
+          {socials.map((s) => (
+            <li>
+              <a
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="border-mauve-300/30 text-lavender-100 hover:border-mauve-300 grid size-11 place-items-center rounded-full border transition-colors"
+                aria-label={s.label}
+              >
+                <LinkIcon name={s.icon} class="size-5" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </nav>
   </div>
 </header>

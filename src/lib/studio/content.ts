@@ -10,6 +10,8 @@
  *   about       étapes de la démarche, blocs de contenu supplémentaires
  *   contact     coordonnées (centralisées : priorité sur src/config/site.ts), réseaux, intro
  *   footer      liens, description, réseaux
+ *   links       liens personnels (réseaux, contact) : nom, URL, icône, catégorie, ordre, actif — utilisés par
+ *               l'en-tête (menu mobile), la section Contact, le pied de page et le référencement
  *
  * Tout est facultatif : sans réglage, le site garde exactement ses contenus actuels (valeurs du code).
  */
@@ -59,8 +61,21 @@ export interface SocialItem {
   href: string;
 }
 
+export type LinkCategory = 'social' | 'contact' | 'other';
+
+export interface LinkItem {
+  id: string;
+  label: string;
+  /** URL, adresse e-mail, numéro de téléphone… (complétés : mailto:, tel:, https://wa.me/…). */
+  href?: string;
+  icon?: string;
+  category?: LinkCategory;
+  visible?: boolean;
+}
+
 export interface ContentSettings {
   texts?: Record<string, string | string[]>;
+  links?: LinkItem[];
   hero?: { description?: string; primaryHref?: string; secondaryHref?: string };
   expertises?: { items?: ExpertiseItem[] };
   ecosystem?: { items?: EntityItem[] };
@@ -115,6 +130,106 @@ export function entityItems(content: ContentSettings = {}): (EntityItem & { buil
       builtin: (BUILTIN_ENTITIES as readonly string[]).includes(id),
     }))
     .filter((i) => i.visible !== false && (i.builtin || i.name));
+}
+
+/* ------------------------------------------------------------------ liens personnels */
+/** Liste proposée par défaut (vide : rien ne s'affiche tant qu'une adresse n'est pas saisie). */
+export const DEFAULT_LINK_ITEMS: readonly LinkItem[] = [
+  { id: 'instagram', label: 'Instagram', icon: 'instagram', category: 'social' },
+  { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', category: 'contact' },
+  { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', category: 'social' },
+  { id: 'github', label: 'GitHub', icon: 'github', category: 'social' },
+  { id: 'youtube', label: 'YouTube', icon: 'youtube', category: 'social' },
+  { id: 'email', label: 'E-mail', icon: 'mail', category: 'contact' },
+  { id: 'telephone', label: 'Téléphone', icon: 'phone', category: 'contact' },
+];
+
+/**
+ * Liens personnels : la liste réglée ; sinon la liste par défaut, complétée par les anciennes
+ * coordonnées (Contact : e-mail, téléphone, WhatsApp, réseaux) pour ne rien perdre.
+ */
+export function linkItems(content: ContentSettings = {}): LinkItem[] {
+  if (content.links) return content.links;
+  const c = content.contact ?? {};
+  const legacy: Record<string, string | undefined> = {
+    email: c.email,
+    telephone: c.phone,
+    whatsapp: c.whatsapp,
+  };
+  const socials = (c.socials ?? []).map((s, i) => ({
+    id: `reseau-${i + 1}`,
+    label: s.label,
+    href: s.href,
+    icon: guessIcon(s.href),
+    category: 'social' as const,
+  }));
+  return [
+    ...DEFAULT_LINK_ITEMS.map((l) => ({ ...l, ...(legacy[l.id] ? { href: legacy[l.id] } : {}) })),
+    ...socials,
+  ];
+}
+
+/** Icône déduite d'une adresse (liens anciens sans icône). */
+export function guessIcon(href = ''): string {
+  const h = href.toLowerCase();
+  const known = [
+    'instagram',
+    'linkedin',
+    'github',
+    'youtube',
+    'facebook',
+    'tiktok',
+    'behance',
+    'dribbble',
+    'telegram',
+  ];
+  const found = known.find((k) => h.includes(k));
+  if (found) return found;
+  if (h.includes('wa.me') || h.includes('whatsapp')) return 'whatsapp';
+  if (h.includes('x.com') || h.includes('twitter')) return 'x';
+  if (h.startsWith('mailto:') || h.includes('@')) return 'mail';
+  if (h.startsWith('tel:')) return 'phone';
+  return 'link';
+}
+
+/** Adresse finale d'un lien (e-mail → mailto:, numéro → tel: ou wa.me, domaine → https://). */
+export function linkHref(item: Pick<LinkItem, 'href' | 'icon'>): string | undefined {
+  const raw = item.href?.trim();
+  if (!raw) return undefined;
+  if (safeHref(raw)) return raw;
+  if (/^[^\s@/]+@[^\s@/]+\.[a-z]{2,}$/i.test(raw)) return `mailto:${raw}`;
+  const digits = raw.replace(/[^\d+]/g, '');
+  if (/^\+?\d{6,15}$/.test(digits) && /^[\d\s+().-]+$/.test(raw))
+    return item.icon === 'whatsapp'
+      ? `https://wa.me/${digits.replace(/^\+/, '')}`
+      : `tel:${digits}`;
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(raw)) return `https://${raw}`;
+  return undefined;
+}
+
+/** Texte affiché pour un lien de contact (adresse lisible plutôt que l'URL). */
+export function linkDisplay(item: Pick<LinkItem, 'href' | 'label'>): string {
+  const raw = item.href?.trim() ?? '';
+  if (raw.startsWith('mailto:')) return raw.slice(7);
+  if (raw.startsWith('tel:')) return raw.slice(4);
+  if (/^https?:\/\//.test(raw)) return item.label;
+  return raw || item.label;
+}
+
+export interface ResolvedLink extends LinkItem {
+  url: string;
+  display: string;
+}
+
+/** Liens actifs, avec une adresse valable, dans l'ordre choisi. */
+export function activeLinks(
+  content: ContentSettings = {},
+  category?: LinkCategory,
+): ResolvedLink[] {
+  return linkItems(content)
+    .filter((l) => l.visible !== false && (!category || (l.category ?? 'social') === category))
+    .map((l) => ({ ...l, url: linkHref(l) ?? '', display: linkDisplay(l) }))
+    .filter((l) => l.url && l.label?.trim());
 }
 
 /* ------------------------------------------------------------------ liens */

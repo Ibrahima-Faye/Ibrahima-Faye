@@ -1,0 +1,25 @@
+---
+/** Icône d'un lien (réseau, contact) — voir src/lib/icons.ts. Décorative : le texte est porté par le lien. */
+import { LINK_ICONS, isLinkIcon } from '@/lib/icons';
+
+interface Props {
+  name?: string;
+  class?: string;
+}
+
+const { name, class: className } = Astro.props;
+const icon = LINK_ICONS[isLinkIcon(name) ? name : 'link'];
+---
+
+<svg
+  class={className}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.5"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+  set:html={icon.path}
+/>

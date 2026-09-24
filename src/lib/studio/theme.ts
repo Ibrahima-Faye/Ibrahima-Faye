@@ -55,6 +55,10 @@ export interface ThemeSettings {
     tagline?: string;
     logo?: string;
     favicon?: string;
+    /** Photo de profil (en-tête si « photo », section À propos si aucun portrait). */
+    photo?: string;
+    /** Symbole de l'en-tête : monogramme (défaut), photo ou logo. */
+    mark?: 'monogram' | 'photo' | 'logo';
   };
 }
 

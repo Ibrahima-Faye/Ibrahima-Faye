@@ -5,6 +5,7 @@ import Icon from '@/components/ui/Icon.astro';
 import { settings } from '@/lib/settings';
 import { sectionStyle } from '@/lib/studio/layout';
 import { inlineMarkdown, safeHref } from '@/lib/studio/content';
+import LinkIcon from '@/components/ui/LinkIcon.astro';
 
 interface Props {
   locale: Locale;
@@ -63,10 +64,11 @@ const look = sectionStyle(own);
               <li>
                 <a
                   href={s.href}
-                  class="link-line text-paper-muted hover:text-paper text-sm"
+                  class="link-line text-paper-muted hover:text-paper inline-flex items-center gap-2 text-sm"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
+                  {s.icon && <LinkIcon name={s.icon} class="size-4" />}
                   {s.label}
                 </a>
               </li>

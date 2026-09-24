@@ -166,6 +166,7 @@ export type SettingsName = 'theme' | 'layout' | 'navigation' | 'animations' | 'c
 
 export type ContentTab =
   | 'accueil'
+  | 'identite'
   | 'expertises'
   | 'projets'
   | 'ecosysteme'

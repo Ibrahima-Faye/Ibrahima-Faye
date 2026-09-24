@@ -24,6 +24,8 @@ const portraits = import.meta.glob<ImageMetadata>('/src/assets/portrait.{jpg,jpe
   import: 'default',
 });
 const portrait = Object.values(portraits)[0];
+// Photo de profil (Identité & Liens) : utilisée si aucun portrait n'est déposé dans src/assets/
+const photo = portrait ? undefined : settings.theme.identity?.photo;
 const ratio = portrait ? portrait.width / portrait.height : 4 / 5;
 // Contenu du site → À propos : blocs supplémentaires (titre, texte, liste, citation, image, bouton)
 const blocks = settings.content.about?.blocks ?? [];
@@ -62,6 +64,13 @@ const blocks = settings.content.about?.blocks ?? [];
               sizes="(min-width: 1024px) 40vw, 90vw"
               pictureAttributes={{ class: 'block size-full' }}
               class="size-full object-cover"
+            />
+          ) : photo ? (
+            <img
+              src={photo}
+              alt={t.about.portraitAlt}
+              class="size-full object-cover"
+              loading="lazy"
             />
           ) : (
             <div
