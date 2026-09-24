@@ -15,17 +15,100 @@ import { createPreview } from '../studio/preview';
 import { renderNavigationPanel } from '../studio/navigation-panel';
 import { EDITORS } from '../content/editors';
 
-const TABS: { id: ContentTab; label: string; focus?: string; doc: SettingsName }[] = [
-  { id: 'accueil', label: 'Accueil', focus: 'hero.section', doc: 'content' },
-  { id: 'identite', label: 'Identité & Liens', focus: 'contact.section', doc: 'content' },
-  { id: 'expertises', label: 'Expertises', focus: 'expertises.section', doc: 'content' },
-  { id: 'projets', label: 'Projets', focus: 'projects.section', doc: 'content' },
-  { id: 'ecosysteme', label: 'Écosystème', focus: 'ecosystem.section', doc: 'content' },
-  { id: 'a-propos', label: 'À propos', focus: 'about.section', doc: 'content' },
-  { id: 'contact', label: 'Contact', focus: 'contact.section', doc: 'content' },
-  { id: 'footer', label: 'Footer', focus: 'footer.wordmark', doc: 'content' },
-  { id: 'navigation', label: 'Navigation', doc: 'navigation' },
+const TABS: {
+  id: ContentTab;
+  label: string;
+  focus?: string;
+  doc: SettingsName;
+  /** Sous-titre de l'en-tête : ce que contient la catégorie. */
+  about: string;
+}[] = [
+  {
+    id: 'accueil',
+    label: 'Accueil',
+    focus: 'hero.section',
+    doc: 'content',
+    about: 'Hero, manifeste et référencement de la page d’accueil.',
+  },
+  {
+    id: 'identite',
+    label: 'Identité & Liens',
+    focus: 'contact.section',
+    doc: 'content',
+    about: 'Nom, symbole de l’en-tête, photo de profil, réseaux et coordonnées.',
+  },
+  {
+    id: 'expertises',
+    label: 'Expertises',
+    focus: 'expertises.section',
+    doc: 'content',
+    about: 'Textes de la section, ordre et visibilité des domaines.',
+  },
+  {
+    id: 'projets',
+    label: 'Projets',
+    focus: 'projects.section',
+    doc: 'content',
+    about: 'Section Projets de l’accueil, page Projets et libellés des pages projet.',
+  },
+  {
+    id: 'ecosysteme',
+    label: 'Écosystème',
+    focus: 'ecosystem.section',
+    doc: 'content',
+    about: 'Textes de la section, entités ClicGraph et JeeFSYS, projets personnels.',
+  },
+  {
+    id: 'a-propos',
+    label: 'À propos',
+    focus: 'about.section',
+    doc: 'content',
+    about: 'Présentation, démarche et blocs de contenu.',
+  },
+  {
+    id: 'contact',
+    label: 'Contact',
+    focus: 'contact.section',
+    doc: 'content',
+    about: 'Textes et libellés de la section Contact.',
+  },
+  {
+    id: 'footer',
+    label: 'Footer',
+    focus: 'footer.wordmark',
+    doc: 'content',
+    about: 'Présentation, liens « Explorer », colonne « Univers » et bas de page.',
+  },
+  {
+    id: 'navigation',
+    label: 'Navigation',
+    doc: 'navigation',
+    about: 'Liens de l’en-tête du site : ordre, libellés et visibilité.',
+  },
 ];
+
+/**
+ * Regroupe les champs en cartes : chaque titre (.ce-heading) ouvre un groupe qui contient
+ * les champs qui le suivent. Présentation uniquement — les champs et leur logique ne changent pas.
+ */
+function groupFields(panel: HTMLElement) {
+  if (!panel.querySelector(':scope > .ce-heading')) return;
+  let body: HTMLElement | undefined;
+  const groups: HTMLElement[] = [];
+  for (const node of [...panel.childNodes]) {
+    if (node instanceof HTMLElement && node.classList.contains('ce-heading')) {
+      body = h('div', { class: 'ce-group-body' });
+      groups.push(h('section', { class: 'ce-group' }, node, body));
+    } else {
+      if (!body) {
+        body = h('div', { class: 'ce-group-body' });
+        groups.push(h('section', { class: 'ce-group' }, body));
+      }
+      body.append(node);
+    }
+  }
+  panel.replaceChildren(...groups);
+}
 
 export async function mountContent(host: HTMLElement, route: Route, meta: Meta): Promise<View> {
   host.replaceChildren(h('p', { class: 'cms-muted' }, 'Chargement du contenu…'));
@@ -58,6 +141,7 @@ export async function mountContent(host: HTMLElement, route: Route, meta: Meta):
       const ctx = { state, meta, dictionary: meta.studio?.dictionary ?? {}, redraw: draw };
       panel.replaceChildren(...(EDITORS[tab](ctx).flat(3) as (Node | string)[]).filter(Boolean));
     }
+    groupFields(panel);
     panel.querySelectorAll('details.ce-item').forEach((d) => {
       if (open.has(d.querySelector('.ce-item-title')?.textContent ?? ''))
         (d as HTMLDetailsElement).open = true;
@@ -66,7 +150,7 @@ export async function mountContent(host: HTMLElement, route: Route, meta: Meta):
   };
 
   /* ---------------------------------------------------------------- barre d'actions */
-  const status = h('span', { class: 'st-status' });
+  const status = h('span', { class: 'st-status', role: 'status' });
   const saveButton = h(
     'button',
     { type: 'button', class: 'cms-btn is-primary' },
@@ -81,15 +165,32 @@ export async function mountContent(host: HTMLElement, route: Route, meta: Meta):
       s === 'saving'
         ? 'Enregistrement…'
         : s === 'error'
-          ? 'Non enregistré'
+          ? 'Erreur'
           : dirty
-            ? 'Modifications non enregistrées'
+            ? 'Modifications en cours'
             : 'Enregistré';
-    status.dataset.state =
-      s === 'saving' ? 'saving' : s === 'error' ? 'error' : dirty ? 'dirty' : 'saved';
+    const next = s === 'saving' ? 'saving' : s === 'error' ? 'error' : dirty ? 'dirty' : 'saved';
+    // retour visuel bref quand un enregistrement vient d'aboutir
+    if (next === 'saved' && status.dataset.state === 'saving') {
+      status.classList.remove('is-flash');
+      void status.offsetWidth;
+      status.classList.add('is-flash');
+      panel.querySelectorAll('.st-row.is-edited').forEach((r) => r.classList.remove('is-edited'));
+    }
+    status.dataset.state = next;
+    status.title =
+      next === 'error'
+        ? 'L’enregistrement a échoué : les modifications sont toujours dans l’éditeur.'
+        : next === 'dirty'
+          ? 'Modifications non enregistrées (Ctrl+S pour enregistrer)'
+          : '';
     saveButton.disabled = !dirty;
     cancelButton.disabled = !dirty;
   };
+  // champ modifié depuis le dernier enregistrement (repère visuel)
+  panel.addEventListener('input', (e) =>
+    (e.target as HTMLElement).closest?.('.st-row')?.classList.add('is-edited'),
+  );
   state.onStatus(refreshStatus);
   state.onChange(refreshStatus);
 
@@ -164,8 +265,21 @@ export async function mountContent(host: HTMLElement, route: Route, meta: Meta):
   window.addEventListener('beforeunload', onBeforeUnload);
 
   const tabButtons = TABS.map((t) =>
-    h('a', { class: `st-tab${t.id === tab ? ' is-on' : ''}`, href: `#/contenu/${t.id}` }, t.label),
+    h('a', { class: 'st-tab', href: `#/contenu/${t.id}` }, t.label),
   );
+  const heading = h('h1', null);
+  const subtitle = h('p', null);
+  const showTab = () => {
+    const current = TABS.find((t) => t.id === tab)!;
+    heading.textContent = current.label;
+    subtitle.textContent = current.about;
+    tabButtons.forEach((b, i) => {
+      const on = TABS[i]!.id === tab;
+      b.classList.toggle('is-on', on);
+      if (on) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+  };
 
   host.replaceChildren(
     h(
@@ -177,14 +291,18 @@ export async function mountContent(host: HTMLElement, route: Route, meta: Meta):
         h(
           'div',
           { class: 'st-title' },
-          h('h1', null, 'Contenu du site'),
-          h('p', null, 'Textes et contenus du portfolio'),
+          h('p', { class: 'st-eyebrow' }, 'Contenu du site'),
+          heading,
+          subtitle,
         ),
-        h('span', { class: 'cms-grow' }),
-        status,
-        versions,
-        cancelButton,
-        saveButton,
+        h(
+          'div',
+          { class: 'st-actions' },
+          status,
+          h('label', { class: 'st-versions' }, icon('history', 15), versions),
+          cancelButton,
+          saveButton,
+        ),
       ),
       h('nav', { class: 'st-tabs ce-tabs', 'aria-label': 'Catégories' }, tabButtons),
       h(
@@ -195,6 +313,7 @@ export async function mountContent(host: HTMLElement, route: Route, meta: Meta):
       ),
     ),
   );
+  showTab();
   draw();
   refreshStatus();
   void loadVersions();
@@ -204,7 +323,7 @@ export async function mountContent(host: HTMLElement, route: Route, meta: Meta):
       if (next.name !== 'content') return false;
       if (next.tab !== tab) {
         tab = next.tab;
-        tabButtons.forEach((b, i) => b.classList.toggle('is-on', TABS[i]!.id === tab));
+        showTab();
         panel.scrollTop = 0;
         draw();
         void loadVersions();

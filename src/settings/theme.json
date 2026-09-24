@@ -1,3 +1,7 @@
 {
-  "version": 1
+  "version": 1,
+  "identity": {
+    "logo": "/identite/portrait-formel-sur-fond-blanc-3.png",
+    "photo": "/identite/f.png"
+  }
 }

@@ -17,6 +17,7 @@ import { createJobs } from './media/jobs.mjs';
 import { formatOf, listOriginals, readManifest, staleFiles } from './media/pipeline.mjs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { adminBrowserDeps, routerBrowserDeps } from './admin-deps.mjs';
 
 export default function localCms() {
   /** @type {string} */
@@ -34,6 +35,20 @@ export default function localCms() {
           // /admin ET /admin/ fonctionnent. Développement uniquement : le site publié garde `trailingSlash: 'always'`.
           trailingSlash: 'ignore',
           vite: {
+            // sortablejs (glisser-déposer, utilisé SEULEMENT par /admin) est un module ES natif sans dépendance :
+            // on le sert tel quel, hors de l'optimiseur de Vite. Optimisé, il recevait un numéro de version qui
+            // devenait « périmé » dès que Vite recompilait ses dépendances en cours de séance (barre d'outils Astro,
+            // cache vidé…) → réponse 504 « Outdated Optimize Dep » → tout le JavaScript de /admin bloqué, page noire.
+            // Toutes les autres bibliothèques du navigateur utilisées par /admin (lues dans ses imports, ex. astro/zod)
+            // et les modules du routeur d'Astro sont pré-compilées DÈS LE DÉMARRAGE (voir admin-deps.mjs) : aucune
+            // découverte tardive, donc aucune recompilation en cours de séance qui laisserait /admin en 504.
+            optimizeDeps: {
+              exclude: ['sortablejs'],
+              include: [
+                ...adminBrowserDeps(root).filter((dep) => dep !== 'sortablejs'),
+                ...routerBrowserDeps(root),
+              ],
+            },
             server: {
               watch: {
                 ignored: [

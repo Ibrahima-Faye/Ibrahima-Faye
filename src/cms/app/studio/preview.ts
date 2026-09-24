@@ -43,13 +43,24 @@ export function createPreview(options: {
 
   const frame = h('iframe', { class: 'st-frame', title: 'Aperçu du site', loading: 'eager' });
   const stage = h('div', { class: 'st-stage is-loading' }, frame);
+  // taille simulée, lisible d'un coup d'œil : appareil · largeur réelle · échelle d'affichage
+  const viewport = h('span', { class: 'st-viewport' });
 
+  let stageHeight = 0;
   const fit = () => {
-    const height = Math.max(420, stage.clientHeight);
+    // un écart d'un pixel (arrondi d'une position fractionnaire) ne redimensionne pas la page affichée
+    if (Math.abs(stage.clientHeight - stageHeight) >= 2) stageHeight = stage.clientHeight;
+    const height = Math.max(420, stageHeight);
     const scale = Math.min(1, (stage.clientWidth - 24) / device.width);
     frame.style.width = `${device.width}px`;
     frame.style.height = `${Math.round(height / scale)}px`;
     frame.style.transform = `translateX(-50%) scale(${scale})`;
+    // hors du cycle de l'observateur de taille : le texte peut changer la hauteur de la barre
+    const text = `${device.width} px · ${Math.round(scale * 100)} %`;
+    if (viewport.dataset.text !== `${device.label} ${text}`) {
+      viewport.dataset.text = `${device.label} ${text}`;
+      requestAnimationFrame(() => viewport.replaceChildren(h('strong', null, device.label), text));
+    }
   };
 
   const post = (message: Record<string, unknown>) =>
@@ -81,6 +92,7 @@ export function createPreview(options: {
         type: 'button',
         class: `st-seg-btn${d.id === device.id ? ' is-on' : ''}`,
         title: `${d.label} · ${d.width} px`,
+        'aria-label': `Aperçu ${d.label} (${d.width} px)`,
         'aria-pressed': String(d.id === device.id),
       },
       icon(d.icon, 16),
@@ -133,11 +145,18 @@ export function createPreview(options: {
       { class: 'st-preview-bar' },
       h('div', { class: 'st-seg' }, deviceButtons),
       pageSelect,
+      viewport,
       h('span', { class: 'cms-grow' }),
       selectButton,
       h(
         'button',
-        { type: 'button', class: 'cms-btn is-ghost', title: 'Recharger l’aperçu', onclick: load },
+        {
+          type: 'button',
+          class: 'cms-btn is-ghost',
+          title: 'Recharger l’aperçu',
+          'aria-label': 'Recharger l’aperçu',
+          onclick: load,
+        },
         icon('refresh', 16),
       ),
     ),

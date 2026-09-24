@@ -1,3 +1,50 @@
 {
-  "version": 1
+  "version": 1,
+  "links": [
+    {
+      "id": "instagram",
+      "label": "Instagram",
+      "href": "https://www.instagram.com/lil_khalil_fye/",
+      "icon": "instagram",
+      "category": "social"
+    },
+    {
+      "id": "whatsapp",
+      "label": "WhatsApp",
+      "icon": "whatsapp",
+      "category": "contact"
+    },
+    {
+      "id": "linkedin",
+      "label": "LinkedIn",
+      "icon": "linkedin",
+      "category": "social"
+    },
+    {
+      "id": "github",
+      "label": "GitHub",
+      "icon": "github",
+      "category": "social"
+    },
+    {
+      "id": "youtube",
+      "label": "YouTube",
+      "icon": "youtube",
+      "category": "social"
+    },
+    {
+      "id": "email",
+      "label": "E-mail",
+      "href": "fyeibrahima@gmail.com",
+      "icon": "mail",
+      "category": "contact"
+    },
+    {
+      "id": "telephone",
+      "label": "Téléphone",
+      "href": "+221762204228",
+      "icon": "phone",
+      "category": "contact"
+    }
+  ]
 }

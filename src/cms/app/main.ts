@@ -39,16 +39,15 @@ const STUDIO_TABS: StudioTab[] = ['theme', 'animations', 'sections', 'navigation
 /*
   Le serveur de développement recharge TOUTES les pages quand un fichier du site change (nouveau média,
   project.md…). L'administration écrit justement ces fichiers : sans cette garde, chaque envoi ou chaque
-  enregistrement rechargerait /admin en plein travail. (Lever l'exception annule le rechargement.)
+  enregistrement rechargerait /admin en plein travail.
+  Vite ne recharge pas une page quand l'avis de rechargement désigne une AUTRE page HTML : l'avis reçu
+  par /admin est donc redirigé vers une page qui n'existe pas. (Auparavant, une exception annulait le
+  rechargement, mais Vite la signalait comme une erreur dans le terminal.)
   Les pages du site, elles, se rechargent normalement — c'est ce qui met à jour l'aperçu.
 */
 if (import.meta.hot) {
-  import.meta.hot.on('vite:beforeFullReload', () => {
-    throw new Error('[admin] rechargement automatique évité');
-  });
-  // cette exception est voulue : on l'empêche de s'afficher comme une erreur dans la console
-  window.addEventListener('error', (event) => {
-    if (String(event.message).includes('[admin] rechargement')) event.preventDefault();
+  import.meta.hot.on('vite:beforeFullReload', (payload: { path?: string }) => {
+    payload.path = '/__admin-sans-rechargement.html';
   });
 }
 
@@ -75,37 +74,124 @@ function parseRoute(hash: string): Route {
 const authBox = h(
   'button',
   { type: 'button', class: 'cms-nav-link cms-logout', onclick: () => void logout() },
-  icon('close', 18),
-  'Se déconnecter',
+  icon('logout', 18),
+  h('span', null, 'Se déconnecter'),
 );
-const nav = h('nav', { class: 'cms-nav', 'aria-label': 'Navigation' });
+const nav = h('nav', { class: 'cms-nav', 'aria-label': 'Navigation principale' });
 const main = h('main', { class: 'cms-main', id: 'cms-main' });
 
 const NAV = [
-  { id: 'dashboard', label: 'Tableau de bord', href: '#/', icon: 'dashboard' as const },
-  { id: 'projects', label: 'Projets', href: '#/projets', icon: 'folder' as const },
-  { id: 'new', label: 'Nouveau projet', href: '#/projets/nouveau', icon: 'plus' as const },
-  { id: 'content', label: 'Contenu du site', href: '#/contenu/accueil', icon: 'edit' as const },
-  { id: 'studio', label: 'Studio', href: '#/studio/theme', icon: 'layout' as const },
+  { id: 'dashboard', label: 'Tableau de bord', href: '#/', icon: 'dashboard' as const, group: 0 },
+  { id: 'projects', label: 'Projets', href: '#/projets', icon: 'folder' as const, group: 0 },
+  {
+    id: 'new',
+    label: 'Nouveau projet',
+    href: '#/projets/nouveau',
+    icon: 'plus' as const,
+    group: 0,
+  },
+  {
+    id: 'content',
+    label: 'Contenu du site',
+    href: '#/contenu/accueil',
+    icon: 'fileText' as const,
+    group: 1,
+  },
+  { id: 'studio', label: 'Studio', href: '#/studio/theme', icon: 'sliders' as const, group: 1 },
 ];
+const NAV_GROUPS = ['Espace de travail', 'Site'];
+
+/* navigation mobile : la barre latérale devient un panneau ouvert par le bouton « Menu » */
+const side = h('aside', { class: 'cms-side', id: 'cms-side', 'aria-label': 'Administration' });
+const menuButton = h(
+  'button',
+  {
+    type: 'button',
+    class: 'cms-menu-btn',
+    'aria-controls': 'cms-side',
+    'aria-expanded': 'false',
+    'aria-label': 'Ouvrir le menu',
+  },
+  icon('menu', 20),
+);
+const topbarSection = h('span', { class: 'cms-topbar-section' });
+const setMenu = (open: boolean) => {
+  document.body.classList.toggle('cms-menu-open', open);
+  menuButton.setAttribute('aria-expanded', String(open));
+  menuButton.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+};
+menuButton.addEventListener('click', () =>
+  setMenu(!document.body.classList.contains('cms-menu-open')),
+);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.body.classList.contains('cms-menu-open')) {
+    setMenu(false);
+    menuButton.focus();
+  }
+});
 
 function renderNav(route: Route) {
   const active = route.name === 'edit' ? 'projects' : route.name;
+  topbarSection.textContent = NAV.find((item) => item.id === active)?.label ?? '';
+  setMenu(false);
   nav.replaceChildren(
-    ...NAV.map((item) =>
+    ...NAV_GROUPS.map((label, group) =>
       h(
-        'a',
-        {
-          class: `cms-nav-link${item.id === active ? ' is-on' : ''}`,
-          href: item.href,
-          'aria-current': item.id === active ? 'page' : undefined,
-        },
-        icon(item.icon, 18),
-        item.label,
+        'div',
+        { class: 'cms-nav-group' },
+        h('p', { class: 'cms-nav-label' }, label),
+        ...NAV.filter((item) => item.group === group).map((item) =>
+          h(
+            'a',
+            {
+              class: `cms-nav-link${item.id === active ? ' is-on' : ''}`,
+              href: item.href,
+              'aria-current': item.id === active ? 'page' : undefined,
+            },
+            icon(item.icon, 18),
+            h('span', null, item.label),
+          ),
+        ),
       ),
     ),
   );
 }
+
+side.append(
+  h(
+    'a',
+    { class: 'cms-brand', href: '#/' },
+    h('span', { class: 'cms-monogram' }, 'IF'),
+    h(
+      'span',
+      { class: 'cms-brand-text' },
+      h('strong', null, 'Ibrahima Faye'),
+      h('small', null, 'Administration'),
+    ),
+  ),
+  nav,
+  h(
+    'div',
+    { class: 'cms-side-foot' },
+    h('p', { class: 'cms-nav-label' }, 'Système'),
+    h(
+      'a',
+      { class: 'cms-nav-link', href: '/', target: '_blank', rel: 'noopener' },
+      icon('globe', 18),
+      h('span', null, 'Voir le site'),
+      icon('external', 14),
+    ),
+    h(
+      'a',
+      { class: 'cms-nav-link', href: '/projets/', target: '_blank', rel: 'noopener' },
+      icon('folder', 18),
+      h('span', null, 'Page Projets'),
+      icon('external', 14),
+    ),
+    h('p', { class: 'cms-local' }, h('i'), 'Mode local — jamais publié'),
+    authBox,
+  ),
+);
 
 document
   .getElementById('cms-root')!
@@ -114,34 +200,19 @@ document
       'div',
       { class: 'cms-shell' },
       h(
-        'aside',
-        { class: 'cms-side' },
+        'header',
+        { class: 'cms-topbar' },
+        menuButton,
         h(
           'a',
-          { class: 'cms-brand', href: '#/' },
+          { class: 'cms-brand is-compact', href: '#/' },
           h('span', { class: 'cms-monogram' }, 'IF'),
-          h('span', null, h('strong', null, 'Administration'), h('small', null, 'Ibrahima Faye')),
+          h('strong', null, 'Administration'),
         ),
-        nav,
-        h(
-          'div',
-          { class: 'cms-side-foot' },
-          h(
-            'a',
-            { class: 'cms-nav-link', href: '/', target: '_blank', rel: 'noopener' },
-            icon('globe', 18),
-            'Voir le site',
-          ),
-          h(
-            'a',
-            { class: 'cms-nav-link', href: '/projets/', target: '_blank', rel: 'noopener' },
-            icon('external', 18),
-            'Page Projets',
-          ),
-          h('p', { class: 'cms-local' }, h('i'), 'Mode local — jamais publié'),
-          authBox,
-        ),
+        topbarSection,
       ),
+      side,
+      h('div', { class: 'cms-scrim', onclick: () => setMenu(false), 'aria-hidden': 'true' }),
       main,
     ),
     h('div', { id: 'cms-toasts', 'aria-live': 'polite' }),

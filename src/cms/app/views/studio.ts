@@ -25,21 +25,31 @@ const TABS: { id: StudioTab; label: string; doc: SettingsName; hint: string }[] 
     doc: 'theme',
     hint: 'Couleurs, typographie, interface, effets, identité',
   },
-  { id: 'animations', label: 'Animations', doc: 'animations', hint: 'Animation Studio' },
+  {
+    id: 'animations',
+    label: 'Animations',
+    doc: 'animations',
+    hint: 'Animation Studio : préréglages, animation de chaque élément, rejeu dans l’aperçu',
+  },
   {
     id: 'sections',
     label: 'Sections',
     doc: 'layout',
     hint: 'Ordre, textes, fonds de la page d’accueil',
   },
-  { id: 'navigation', label: 'Navigation', doc: 'navigation', hint: 'Liens de l’en-tête' },
+  {
+    id: 'navigation',
+    label: 'Navigation',
+    doc: 'navigation',
+    hint: 'Liens de l’en-tête : ordre, libellés et visibilité',
+  },
 ];
 
 const STATUS: Record<SaveStatus, string> = {
   saved: 'Enregistré',
-  dirty: 'Modifications…',
+  dirty: 'Modifications en cours',
   saving: 'Enregistrement…',
-  error: 'Non enregistré',
+  error: 'Erreur',
 };
 
 export async function mountStudio(host: HTMLElement, route: Route, meta: Meta): Promise<View> {
@@ -157,15 +167,35 @@ export async function mountStudio(host: HTMLElement, route: Route, meta: Meta): 
   const tabButtons = TABS.map((t) =>
     h(
       'a',
-      { class: `st-tab${t.id === tab ? ' is-on' : ''}`, href: `#/studio/${t.id}`, title: t.hint },
+      {
+        class: `st-tab${t.id === tab ? ' is-on' : ''}`,
+        href: `#/studio/${t.id}`,
+        title: t.hint,
+        'aria-current': t.id === tab ? 'page' : undefined,
+      },
       t.label,
     ),
   );
-  const status = h('span', { class: 'st-status' });
+  const status = h('span', { class: 'st-status', role: 'status' });
   state.onStatus((s) => {
+    // retour visuel bref quand un enregistrement vient d'aboutir
+    if (s === 'saved' && status.dataset.state === 'saving') {
+      status.classList.remove('is-flash');
+      void status.offsetWidth;
+      status.classList.add('is-flash');
+    }
     status.textContent = STATUS[s];
     status.dataset.state = s;
+    status.title = s === 'error' ? 'L’enregistrement automatique a échoué.' : '';
   });
+  const heading = h('h1', null);
+  const subtitle = h('p', null);
+  const showTab = () => {
+    const current = TABS.find((t) => t.id === tab)!;
+    heading.textContent = current.label;
+    subtitle.textContent = current.hint;
+  };
+  showTab();
 
   const docOf = () => TABS.find((t) => t.id === tab)!.doc;
   const undo = () => state.undo(docOf()) && renderPanel();
@@ -193,23 +223,39 @@ export async function mountStudio(host: HTMLElement, route: Route, meta: Meta): 
       h(
         'div',
         { class: 'st-title' },
-        h('h1', null, 'Studio'),
-        h('p', null, 'Personnaliser le site sans toucher au code'),
-      ),
-      h('nav', { class: 'st-tabs', 'aria-label': 'Studio' }, tabButtons),
-      h('span', { class: 'cms-grow' }),
-      h(
-        'button',
-        { type: 'button', class: 'st-icon-btn', title: 'Annuler (Ctrl+Z)', onclick: undo },
-        '↶',
+        h('p', { class: 'st-eyebrow' }, 'Studio · enregistrement automatique'),
+        heading,
+        subtitle,
       ),
       h(
-        'button',
-        { type: 'button', class: 'st-icon-btn', title: 'Rétablir (Ctrl+Maj+Z)', onclick: redo },
-        '↷',
+        'div',
+        { class: 'st-actions' },
+        status,
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'st-icon-btn',
+            title: 'Annuler (Ctrl+Z)',
+            'aria-label': 'Annuler (Ctrl+Z)',
+            onclick: undo,
+          },
+          '↶',
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'st-icon-btn',
+            title: 'Rétablir (Ctrl+Maj+Z)',
+            'aria-label': 'Rétablir (Ctrl+Maj+Z)',
+            onclick: redo,
+          },
+          '↷',
+        ),
       ),
-      status,
     ),
+    h('nav', { class: 'st-tabs', 'aria-label': 'Studio' }, tabButtons),
     h(
       'div',
       { class: 'st-body' },
@@ -222,7 +268,13 @@ export async function mountStudio(host: HTMLElement, route: Route, meta: Meta): 
 
   const setTab = (next: StudioTab) => {
     tab = next;
-    tabButtons.forEach((b, i) => b.classList.toggle('is-on', TABS[i]!.id === tab));
+    tabButtons.forEach((b, i) => {
+      const on = TABS[i]!.id === tab;
+      b.classList.toggle('is-on', on);
+      if (on) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    showTab();
     panel.scrollTop = 0;
     renderPanel();
     preview.setSelecting(false);

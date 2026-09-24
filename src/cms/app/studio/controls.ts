@@ -54,18 +54,30 @@ export function group(title: string, children: Child[], open = false, extra?: Ch
   );
 }
 
+const FIELD =
+  'input:is([type=text], [type=url], [type=email], [type=tel], [type=number], [type=search]), textarea, select';
+let fieldCount = 0;
+
 export function row(
   label: string,
   control: Child,
   options: { hint?: string; customized?: boolean; onReset?: () => void; scope?: Child } = {},
 ) {
+  // le libellé désigne le champ (lecteurs d'écran, clic sur le libellé) — champs de saisie uniquement
+  const field =
+    control instanceof Element
+      ? control.matches(FIELD)
+        ? control
+        : control.querySelector(FIELD)
+      : null;
+  if (field && !field.id) field.id = `st-field-${++fieldCount}`;
   return h(
     'div',
     { class: `st-row${options.customized ? ' is-custom' : ''}` },
     h(
       'div',
       { class: 'st-row-head' },
-      h('label', null, label),
+      h('label', { for: field?.id }, label),
       options.scope ?? null,
       options.customized && options.onReset
         ? h(

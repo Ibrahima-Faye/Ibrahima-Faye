@@ -71,6 +71,12 @@ const ICONS = {
   alignTop: '<path d="M4 4h16M9 8h6v12H9z"/>',
   alignMiddle: '<path d="M4 12h3M17 12h3M9 6h6v12H9z"/>',
   alignBottom: '<path d="M4 20h16M9 4h6v12H9z"/>',
+  fileText: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+  sliders:
+    '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  logout: '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10"/>',
+  history: '<path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"/><path d="M12 8v4l3 2"/>',
 } as const;
 export type IconName = keyof typeof ICONS;
 

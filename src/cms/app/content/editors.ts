@@ -36,37 +36,61 @@ const dict = (ctx: Ctx, path: string) => getPath(ctx.dictionary, path);
 /** Téléversement d'une image (logo, image de bloc) → public/identite/. */
 function imagePicker(current: string | undefined, onChange: (path: string | undefined) => void) {
   const input = h('input', { type: 'file', accept: '.svg,.png,.webp,.jpg,.jpeg', hidden: true });
+  const choose = h(
+    'button',
+    { type: 'button', class: 'cms-btn is-ghost', onclick: () => input.click() },
+    icon('upload', 15),
+    'Choisir…',
+  );
+  const status = h('small', null, current ? 'Image en place' : 'SVG, PNG, WebP ou JPEG');
+  const box = h(
+    'div',
+    { class: `st-upload ce-media${current ? ' has-image' : ''}` },
+    h(
+      'span',
+      { class: 'ce-media-thumb' },
+      current ? h('img', { src: current, alt: '', class: 'st-upload-img' }) : icon('image', 20),
+    ),
+    h(
+      'span',
+      { class: 'ce-media-info' },
+      h('strong', null, current ? (current.split('/').pop() ?? current) : 'Aucune image'),
+      status,
+    ),
+    h(
+      'span',
+      { class: 'ce-media-actions' },
+      choose,
+      current
+        ? h(
+            'button',
+            { type: 'button', class: 'cms-btn is-ghost', onclick: () => onChange(undefined) },
+            'Retirer',
+          )
+        : null,
+    ),
+    input,
+  );
   input.addEventListener('change', async () => {
     const file = input.files?.[0];
     if (!file) return;
+    // retour visuel pendant l'envoi
+    box.classList.add('is-busy');
+    choose.disabled = true;
+    status.textContent = `Envoi de ${file.name}…`;
     try {
       const { path } = await api.uploadIdentity(file);
       onChange(path);
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Envoi impossible.', 'error');
+      status.textContent = 'Envoi impossible';
+    } finally {
+      box.classList.remove('is-busy');
+      choose.disabled = false;
+      input.value = '';
     }
   });
-  return h(
-    'div',
-    { class: 'st-upload' },
-    current
-      ? h('img', { src: current, alt: '', class: 'st-upload-img' })
-      : h('span', { class: 'st-muted' }, 'Aucune'),
-    h(
-      'button',
-      { type: 'button', class: 'cms-btn is-ghost', onclick: () => input.click() },
-      icon('upload', 15),
-      'Choisir…',
-    ),
-    current
-      ? h(
-          'button',
-          { type: 'button', class: 'cms-btn is-ghost', onclick: () => onChange(undefined) },
-          'Retirer',
-        )
-      : null,
-    input,
-  );
+  return box;
 }
 
 const domainOptions = (ctx: Ctx) =>

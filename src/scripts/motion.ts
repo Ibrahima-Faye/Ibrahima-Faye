@@ -15,7 +15,7 @@ gsap.registerPlugin(ScrollTrigger, SplitText);
  *   data-parallax="0.4"      décalage vertical au scroll (vitesse relative)
  *   data-magnetic            bouton légèrement attiré par le pointeur
  *   data-intro / data-hero-* séquence d'entrée du Hero
- *   data-connector           trait qui relie Ibrahima à ClicGraph / JeeFSYS
+ *   data-connector           Écosystème : noyau d’identité, flux lumineux, pôles ClicGraph / JeeFSYS
  *
  * `prefers-reduced-motion: reduce` : rien de tout cela ne s'exécute et le CSS
  * laisse tout le contenu visible.
@@ -180,30 +180,123 @@ function setupHero() {
     gsap.to(canvas, { yPercent: 12, scale: 1.06, ease: 'none', scrollTrigger });
 }
 
-function setupConnector() {
+/**
+ * Écosystème : noyau d'identité (Ibrahima Faye) → deux pôles (ClicGraph, JeeFSYS).
+ * Entrée : noyau (échelle + flou + opacité), halo qui se stabilise, flux lumineux dessinés vers les pôles,
+ * pôles puis domaines en décalé. Ensuite : légère parallaxe à la souris, lueur qui suit le pointeur sur
+ * chaque pôle (pointeur fin uniquement). Si l'Animation Studio a repris ce bloc, il décide seul.
+ */
+function setupEcosystem(): () => void {
   const root = document.querySelector<HTMLElement>('[data-connector]');
-  if (!root) return;
-  const lines = q('[data-line]', root);
-  const panels = q('[data-panel]', root);
+  if (!root || root.hasAttribute('data-anim-owned') || root.closest('[data-anim-owned]'))
+    return () => {};
+  const core = root.querySelector<HTMLElement>('[data-core]');
+  const halo = root.querySelector<HTMLElement>('[data-core-halo]');
+  const rings = root.querySelector<SVGElement>('[data-core-rings]');
+  const mark = root.querySelector<HTMLElement>('[data-core-mark]');
+  const name = root.querySelector<HTMLElement>('.eco-core-name');
+  const links = q<SVGPathElement>('[data-link]', root);
+  const pulses = q<SVGPathElement>('[data-pulse]', root);
+  const terminals = q<SVGCircleElement>('.eco-terminal', root);
+  const poles = q('[data-panel]', root);
 
   const tl = gsap.timeline({
-    scrollTrigger: { trigger: root, start: 'top 75%', once: true },
-    defaults: { ease: 'power3.inOut' },
+    scrollTrigger: { trigger: root, start: 'top 78%', once: true },
+    defaults: { ease: 'expo.out' },
   });
-  lines.forEach((line) => {
-    const axis = line.dataset.line === 'bar' ? { scaleX: 0 } : { scaleY: 0 };
-    const origin = line.dataset.line === 'bar' ? '50% 50%' : '50% 0%';
-    gsap.set(line, { transformOrigin: origin });
-    tl.fromTo(line, axis, { scaleX: 1, scaleY: 1, duration: 0.7 }, line.dataset.at ?? '>-0.2');
-  });
-  panels.forEach((panel, i) => {
+  if (core)
     tl.fromTo(
-      panel,
-      { opacity: 0, y: 40 },
-      { opacity: 1, y: 0, duration: 1.1, ease: 'expo.out', clearProps: 'transform' },
-      1.1 + i * 0.15,
+      core,
+      { opacity: 0, scale: 0.72, filter: 'blur(14px)' },
+      { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.5, clearProps: 'filter' },
+      0,
     );
+  if (halo)
+    tl.fromTo(
+      halo,
+      { opacity: 0, scale: 1.7 },
+      { opacity: 1, scale: 1, duration: 2.2, ease: 'power2.out', clearProps: 'opacity' },
+      0.1,
+    );
+  if (rings)
+    tl.fromTo(rings, { opacity: 0, rotate: -50 }, { opacity: 1, rotate: 0, duration: 2 }, 0.15);
+  if (mark)
+    tl.fromTo(mark, { scale: 0.6, rotate: -20 }, { scale: 1, rotate: 0, duration: 1.4 }, 0.25);
+  if (name) tl.fromTo(name, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1 }, 0.7);
+  if (links.length) {
+    gsap.set(links, { strokeDasharray: '1 1' });
+    tl.fromTo(
+      links,
+      { strokeDashoffset: 1 },
+      { strokeDashoffset: 0, duration: 1.4, ease: 'power2.inOut', stagger: 0.12 },
+      0.75,
+    );
+    // les filaments reprennent leur pointillé une fois dessinés
+    tl.add(() =>
+      links.forEach(
+        (l) => l.classList.contains('eco-filament') && l.style.removeProperty('stroke-dasharray'),
+      ),
+    );
+  }
+  if (terminals.length)
+    tl.fromTo(terminals, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6, stagger: 0.12 }, 1.9);
+  if (pulses.length)
+    tl.fromTo(
+      pulses,
+      { autoAlpha: 0 },
+      { autoAlpha: 1, duration: 0.8, clearProps: 'opacity,visibility' },
+      1.9,
+    );
+  poles.forEach((pole, i) => {
+    tl.fromTo(
+      pole,
+      { opacity: 0, y: 44, filter: 'blur(10px)' },
+      { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.3, clearProps: 'transform,filter' },
+      1.05 + i * 0.2,
+    );
+    const domains = q('.eco-domain', pole);
+    if (domains.length)
+      tl.fromTo(
+        domains,
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.7, stagger: 0.05, clearProps: 'transform' },
+        1.55 + i * 0.2,
+      );
   });
+
+  if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return () => {};
+
+  // parallaxe : le noyau et les pôles glissent en sens opposés, très légèrement
+  const layers = q('[data-parallax-depth]', root).map((el) => ({
+    depth: Number(el.dataset.parallaxDepth) || 0,
+    x: gsap.quickTo(el, 'x', { duration: 1.1, ease: 'power3' }),
+    y: gsap.quickTo(el, 'y', { duration: 1.1, ease: 'power3' }),
+  }));
+  const onMove = (e: PointerEvent) => {
+    const r = root.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width - 0.5;
+    const ny = (e.clientY - r.top) / r.height - 0.5;
+    layers.forEach((l) => {
+      l.x(nx * 14 * l.depth);
+      l.y(ny * 10 * l.depth);
+    });
+  };
+  const onLeave = () => layers.forEach((l) => (l.x(0), l.y(0)));
+  // lueur qui suit le pointeur dans chaque pôle
+  const onPole = (e: PointerEvent) => {
+    const pole = e.currentTarget as HTMLElement;
+    const r = pole.getBoundingClientRect();
+    pole.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+    pole.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+  };
+  root.addEventListener('pointermove', onMove);
+  root.addEventListener('pointerleave', onLeave);
+  poles.forEach((p) => p.addEventListener('pointermove', onPole));
+  return () => {
+    root.removeEventListener('pointermove', onMove);
+    root.removeEventListener('pointerleave', onLeave);
+    poles.forEach((p) => p.removeEventListener('pointermove', onPole));
+  };
 }
 
 /** Boutons « magnétiques » — pointeur fin uniquement. */
@@ -251,10 +344,11 @@ export function initMotion(): () => void {
       setupHero();
       setupReveals();
       setupParallax();
-      setupConnector();
+      const cleanEcosystem = setupEcosystem();
       const cleanMagnetic = setupMagnetic();
       const cleanRefresh = setupRefresh();
       return () => {
+        cleanEcosystem();
         cleanMagnetic();
         cleanRefresh();
       };

@@ -60,7 +60,26 @@ const meta = {
     <div id="cms-root"></div>
     <script type="application/json" id="cms-meta" set:html={JSON.stringify(meta)}></script>
     <script>
-      import '@/cms/app/main';
+      // Chargement surveillé : si un module de l'interface ne peut pas être chargé (serveur de développement
+      // en train de recompiler, par exemple), on recharge UNE fois, puis on affiche un message au lieu d'une page noire.
+      const RETRY = 'cms-admin-retry';
+      import('@/cms/app/main').then(
+        () => sessionStorage.removeItem(RETRY),
+        (error) => {
+          console.error('[admin] interface non chargée', error);
+          if (!sessionStorage.getItem(RETRY)) {
+            sessionStorage.setItem(RETRY, '1');
+            location.reload();
+            return;
+          }
+          sessionStorage.removeItem(RETRY);
+          const root = document.getElementById('cms-root');
+          if (root)
+            root.innerHTML =
+              '<p style="padding:2rem;max-width:40rem;line-height:1.6">L’interface d’administration n’a pas pu se charger. ' +
+              'Redémarrez le serveur de développement (<code>npm run dev</code>), puis rechargez cette page.</p>';
+        },
+      );
     </script>
   </body>
 </html>
