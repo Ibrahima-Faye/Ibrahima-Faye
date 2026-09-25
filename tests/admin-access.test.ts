@@ -142,6 +142,15 @@ describe('handleAdmin', () => {
     }
   });
 
+  it('refuse proprement (403) si la vérification lève une erreur imprévue', async () => {
+    const failing: KeyProvider = async () => {
+      throw new Error('panne');
+    };
+    const response = await handleAdmin(request('/admin/', await liveToken()), ENV, failing);
+    expect(response.status).toBe(403);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+  });
+
   it('refuse avant tout routage, même pour une méthode ou une page inexistante', async () => {
     expect((await handleAdmin(request('/admin/', undefined, 'POST'), ENV, getKey)).status).toBe(403);
     expect((await handleAdmin(request('/admin/nimporte-quoi'), ENV, getKey)).status).toBe(403);

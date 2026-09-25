@@ -33,7 +33,13 @@ export async function handleAdmin(request: Request, env: AccessEnv, getKey?: Key
     console.warn('[admin] configuration Cloudflare Access absente ou invalide : administration fermée');
     return text(503, 'Administration indisponible.');
   }
-  const result = await verifyAccessJwt(request.headers.get('Cf-Access-Jwt-Assertion'), config, getKey);
+  let result: Awaited<ReturnType<typeof verifyAccessJwt>>;
+  try {
+    result = await verifyAccessJwt(request.headers.get('Cf-Access-Jwt-Assertion'), config, getKey);
+  } catch {
+    // erreur imprévue (clés illisibles, runtime…) : refus propre, jamais d'ouverture
+    result = { ok: false, reason: 'erreur de vérification' };
+  }
   if (!result.ok) {
     console.warn(`[admin] accès refusé : ${result.reason}`);
     return text(403, 'Accès refusé.');
