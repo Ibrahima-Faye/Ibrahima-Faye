@@ -51,9 +51,34 @@ function customized(base: Dictionary): Dictionary {
     ...settings.layout.content,
     ...settings.content.texts,
   });
-  // étapes de la démarche (liste de { titre, texte }) : remplacées d'un bloc
-  const steps = settings.content.about?.steps?.filter((s) => s.title?.trim());
-  return steps?.length ? { ...dict, about: { ...dict.about, steps } } : dict;
+  // listes remplacées d'un bloc : étapes de l'approche, fiche d'identité, parcours, flux de l'Écosystème
+  const about = settings.content.about ?? {};
+  const steps = about.steps?.filter((s) => s.title?.trim());
+  const facts = about.facts?.filter((f) => f.label?.trim() && f.value?.trim());
+  const timeline = about.timeline?.filter((i) => i.title?.trim());
+  const flow = settings.content.ecosystem?.flow?.filter((f) => f.title?.trim());
+  return {
+    ...dict,
+    about: {
+      ...dict.about,
+      ...(steps?.length ? { steps } : {}),
+      ...(facts?.length ? { facts } : {}),
+      ...(timeline?.length
+        ? {
+            timeline: timeline.map((i) => ({
+              kind: 'formation',
+              period: '',
+              text: '',
+              ...i,
+            })),
+          }
+        : {}),
+    },
+    ecosystem: {
+      ...dict.ecosystem,
+      ...(flow?.length ? { flow: flow.map((f) => ({ text: '', side: 'both', ...f })) } : {}),
+    },
+  };
 }
 
 /** Dictionnaire complet et typé pour une langue. */

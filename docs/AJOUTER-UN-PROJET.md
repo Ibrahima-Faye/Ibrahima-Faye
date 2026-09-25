@@ -37,13 +37,13 @@ npm run projet -- "Bras robotique" --categorie robotique --marque jeefsys
 npm run projet -- "Projet commun" --categorie automatisation --marque clicgraph,jeefsys --annee 2025
 ```
 
-| Option                           | Rôle                                                                                                                                                        |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--categorie`                    | Domaine : `3d-architecture`, `design-graphique`, `impression-3d-fabrication`, `robotique`, `automatisation`, `electronique-electrotechnique`, `prototypage` |
-| `--marque`                       | `clicgraph`, `jeefsys`, `personal` — **plusieurs** séparées par une virgule                                                                                 |
-| `--annee`, `--statut`, `--ordre` | Facultatifs : préremplissent ces champs                                                                                                                     |
-| `--slug`                         | Nom du dossier / adresse (sinon déduit du titre : accents et espaces retirés)                                                                               |
-| `--force`                        | Écraser un projet existant (par défaut, la commande refuse)                                                                                                 |
+| Option                           | Rôle                                                                                                                                                                                     |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--categorie`                    | Domaine : `3d-architecture`, `design-graphique`, `impression-3d-fabrication`, `robotique`, `automatisation`, `electronique-electrotechnique`, `informatique-industrielle`, `prototypage` |
+| `--marque`                       | `clicgraph`, `jeefsys`, `personal` — **plusieurs** séparées par une virgule                                                                                                              |
+| `--annee`, `--statut`, `--ordre` | Facultatifs : préremplissent ces champs                                                                                                                                                  |
+| `--slug`                         | Nom du dossier / adresse (sinon déduit du titre : accents et espaces retirés)                                                                                                            |
+| `--force`                        | Écraser un projet existant (par défaut, la commande refuse)                                                                                                                              |
 
 La commande vérifie les valeurs (une catégorie inconnue est refusée avec la liste des valeurs valides) et ne renseigne
 que ce que tu fournis : aucune donnée inventée.
@@ -190,15 +190,16 @@ media:
 
 **`category`** (une seule valeur par projet) :
 
-| Valeur                          | Domaine                              |
-| ------------------------------- | ------------------------------------ |
-| `3d-architecture`               | 01 · 3D & Architecture               |
-| `design-graphique`              | 02 · Design graphique                |
-| `impression-3d-fabrication`     | 03 · Impression 3D & Fabrication     |
-| `robotique`                     | 04 · Robotique                       |
-| `automatisation`                | 05 · Automatisation industrielle     |
-| `electronique-electrotechnique` | 06 · Électronique & Électrotechnique |
-| `prototypage`                   | 07 · Prototypage                     |
+| Valeur                          | Domaine                                  |
+| ------------------------------- | ---------------------------------------- |
+| `3d-architecture`               | 01 · 3D & Architecture                   |
+| `design-graphique`              | 02 · Design graphique                    |
+| `impression-3d-fabrication`     | 03 · Impression 3D & Fabrication         |
+| `robotique`                     | 04 · Robotique                           |
+| `automatisation`                | 05 · Automatisation industrielle         |
+| `electronique-electrotechnique` | 06 · Électronique & Électrotechnique     |
+| `informatique-industrielle`     | 07 · Informatique industrielle & Réseaux |
+| `prototypage`                   | 08 · Prototypage                         |
 
 **`entity`** (la **marque**) : `clicgraph` (studio créatif), `jeefsys` (startup robotique & automatisation), `personal` (projet personnel). Un projet commun aux deux : `entity: [clicgraph, jeefsys]` ; il apparaît alors dans les filtres des deux marques.
 
@@ -264,15 +265,24 @@ Un **placeholder** est toujours étiqueté comme tel (« Placeholder ») : il ne
 
 ## Section « Expertises » : domaines, projets et outils
 
-La section se remplit toute seule à partir des fiches projet :
+Chaque domaine a une **illustration technique animée** (étiquetée « Illustration technique »), ses **outils** et les
+**projets publiés** de sa catégorie (« Démontré par »). Pour remplacer l'illustration par tes propres médias, dépose un
+fichier nommé comme le domaine dans `src/assets/domaines/` :
 
-- chaque domaine liste les **projets publiés** de sa catégorie (« Démontré par ») ;
-- les **outils** (logiciels, cartes électroniques) et le **matériel** cités dans `technologies` s'affichent sur le
-  domaine du projet, et les outils ont leur carte (icône, catégorie, usage, projets qui les utilisent).
+```
+src/assets/domaines/
+├── robotique.jpg                    ← image (JPG, PNG, WebP, AVIF), tout ratio : jamais recadrée
+├── impression-3d-fabrication.mp4    ← ou une courte vidéo en boucle (MP4, WebM)
+└── ...
+```
 
-Outils reconnus et leurs icônes : `src/data/tools.ts` et `src/lib/tool-icons.ts`. Une technologie inconnue du
-registre reste affichée comme simple mention. Ajouter, renommer, masquer un outil ou changer son icône :
-**Contenu du site → Expertises → Outils** dans l'administration. Aucun niveau ni pourcentage n'est affiché.
+Les noms valides sont les valeurs de `category` (tableau ci-dessus). Si une vidéo et une image existent, la vidéo est utilisée.
+
+**Outils** : la liste vient du CV (`src/data/tools.ts`, icônes : `src/lib/tool-icons.ts`). Un projet dont le champ
+`technologies` cite un outil lui est relié automatiquement ; le matériel cité (moteurs, capteurs…) apparaît sur le
+domaine du projet. Dans l'administration (**Contenu du site → Expertises → Outils**) : nom, icône (ou image), catégorie,
+description, **niveau** (Découverte, Utilisation, Maîtrise, Avancé — aucun par défaut, la barre n'apparaît qu'une fois
+le niveau choisi), ordre, domaines, projets associés, visibilité, et ajout de nouveaux outils. Aucun pourcentage.
 
 ## Composition de la galerie (`span`, `align`, `cover`)
 

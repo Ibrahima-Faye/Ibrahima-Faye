@@ -8,15 +8,15 @@
 import type { Responsive } from './theme';
 
 /**
- * Ordre d'origine de la page d'accueil : qui je suis → comment mon univers est organisé → ce que je sais
- * faire → ce que j'ai réalisé → me contacter. (Le Manifeste, repris dans « À propos », est masqué par défaut.)
+ * Ordre d'origine de la page d'accueil : qui je suis → ce que je sais faire → comment ClicGraph et JeeFSYS
+ * structurent cet univers → ce que j'ai réalisé → me contacter. (Le Manifeste, repris dans « À propos », est masqué par défaut.)
  */
 export const SECTION_KEYS = [
   'hero',
   'marquee',
   'about',
-  'ecosystem',
   'expertises',
+  'ecosystem',
   'projects',
   'contact',
   'manifesto',
@@ -36,8 +36,8 @@ export function sectionVisible(layout: LayoutSettings = {}, key: SectionKey | 'f
 /** Sections numérotées (01, 02…) dans leur ordre d'affichage. */
 export const NUMBERED_SECTIONS: readonly SectionKey[] = [
   'about',
-  'ecosystem',
   'expertises',
+  'ecosystem',
   'projects',
   'contact',
 ];
@@ -300,8 +300,8 @@ export interface NavigationSettings {
 /** Liens d'origine (identiques à l'en-tête historique). `labelKey` : clé de `t.nav`. */
 export const DEFAULT_LINKS: readonly (NavLink & { labelKey: string })[] = [
   { id: 'a-propos', target: 'about', labelKey: 'about' },
-  { id: 'ecosysteme', target: 'ecosystem', labelKey: 'ecosystem' },
   { id: 'expertises', target: 'expertises', labelKey: 'expertises' },
+  { id: 'ecosysteme', target: 'ecosystem', labelKey: 'ecosystem' },
   { id: 'projets', target: 'projects', labelKey: 'projects' },
   { id: 'contact', target: 'contact', labelKey: 'contact', button: true },
 ];

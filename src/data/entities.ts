@@ -19,7 +19,13 @@ export function isEntitySlug(value: unknown): value is EntitySlug {
 /** Domaines couverts par chaque entité (section « Écosystème »). */
 export const entityDomains: Record<Exclude<EntitySlug, 'personal'>, readonly DomainSlug[]> = {
   clicgraph: ['3d-architecture', 'design-graphique', 'impression-3d-fabrication', 'prototypage'],
-  jeefsys: ['robotique', 'automatisation', 'electronique-electrotechnique', 'prototypage'],
+  jeefsys: [
+    'robotique',
+    'automatisation',
+    'electronique-electrotechnique',
+    'informatique-industrielle',
+    'prototypage',
+  ],
 };
 
 /**
@@ -45,6 +51,7 @@ export const entityUniverse: Record<
     { key: 'automatisation', domain: 'automatisation' },
     { key: 'electronique', domain: 'electronique-electrotechnique' },
     { key: 'embarque', domain: 'electronique-electrotechnique' },
+    { key: 'informatique-industrielle', domain: 'informatique-industrielle' },
     { key: 'prototypage', domain: 'prototypage' },
   ],
 };

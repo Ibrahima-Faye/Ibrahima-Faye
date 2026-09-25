@@ -74,7 +74,7 @@ const fr = {
 
   expertises: {
     eyebrow: 'Expertises',
-    title: 'Ce que je pratique.',
+    title: 'Des disciplines qui se répondent.',
     intro:
       'Je passe d’un modèle 3D à une pièce imprimée, d’un rendu à un circuit, d’un prototype à un système qui tourne seul. Chaque domaine renvoie aux projets qui le montrent.',
     projectsCount: { one: '{n} projet', other: '{n} projets' },
@@ -87,10 +87,11 @@ const fr = {
     /** Matériel et techniques cités dans les fiches projet du domaine. */
     alsoUsed: 'Matériel & techniques',
     toolsEyebrow: 'Outils',
-    toolsTitle: 'Les outils de mes projets.',
+    toolsTitle: 'De la création à l’ingénierie.',
     toolsIntro:
-      'Logiciels et cartes électroniques cités dans mes fiches projet — sans niveau ni pourcentage : les projets parlent d’eux-mêmes.',
+      'Les logiciels et les cartes que j’utilise, de la modélisation et du rendu jusqu’à la programmation d’automates et de systèmes embarqués.',
     usedIn: 'Utilisé dans',
+    levelLabel: 'Niveau',
   },
 
   domains: {
@@ -121,6 +122,11 @@ const fr = {
     'electronique-electrotechnique': {
       title: 'Électronique & Électrotechnique',
       description: 'Circuits, capteurs, commande et systèmes embarqués (ESP32, Arduino, etc.).',
+    },
+    'informatique-industrielle': {
+      title: 'Informatique industrielle & Réseaux',
+      description:
+        'Programmation d’équipements industriels, automates et réseaux ; simulation de circuits et d’installations avant la mise en service.',
     },
     prototypage: {
       title: 'Prototypage',
@@ -186,7 +192,7 @@ const fr = {
       name: 'ClicGraph',
       role: 'Mon studio créatif',
       description:
-        'Là où mes idées prennent forme : 3D, architecture, visualisation, rendu photoréaliste, design graphique, impression 3D, fabrication et prototypage.',
+        'Mon studio créatif dédié au rendu 3D et à la conception technique : 3D, architecture, visualisation, design graphique, impression 3D et fabrication.',
     },
     jeefsys: {
       name: 'JeeFSYS',
@@ -205,10 +211,28 @@ const fr = {
     eyebrow: 'Écosystème',
     title: 'Deux univers complémentaires.',
     intro:
-      'Mon profil est hybride : la création numérique d’un côté, la technologie de l’autre. ClicGraph et JeeFSYS en sont les deux dimensions.',
+      'Mon profil est hybride : la création numérique d’un côté, la technologie de l’autre. ClicGraph et JeeFSYS organisent ces deux dimensions — et un même projet peut passer de l’une à l’autre.',
     domainsLabel: 'Univers',
     seeProjects: 'Voir les projets {name}',
     bridgeTitle: 'ClicGraph × JeeFSYS',
+    /** Parcours d'un projet entre les deux univers (modifiable). */
+    flow: [
+      {
+        title: 'Concevoir & visualiser',
+        text: 'Modélisation 3D, rendu, design graphique : l’idée prend forme.',
+        side: 'clicgraph',
+      },
+      {
+        title: 'Prototyper & fabriquer',
+        text: 'Modélisation mécanique, impression 3D : l’objet devient réel.',
+        side: 'both',
+      },
+      {
+        title: 'Animer & automatiser',
+        text: 'Électronique, programmation, automatismes : le système fonctionne.',
+        side: 'jeefsys',
+      },
+    ],
     bridgeText: 'Deux univers, une même approche : transformer une idée en solution concrète.',
     /** Mots-clés de chaque univers (liste : src/data/entities.ts → entityUniverse). */
     keywords: {
@@ -223,6 +247,7 @@ const fr = {
       automatisation: 'Automatisation',
       electronique: 'Électronique',
       embarque: 'Systèmes embarqués',
+      'informatique-industrielle': 'Informatique industrielle',
       prototypage: 'Prototypage',
     },
   },
@@ -230,21 +255,71 @@ const fr = {
   about: {
     eyebrow: 'À propos',
     title: 'Ibrahima Faye',
-    role: 'Créateur technologique',
+    role: 'Technicien supérieur en informatique industrielle · Concepteur 3D',
+    /**
+     * Biographie — sources : CV (titre, spécialités, expérience depuis 2018, formation) et ancien portfolio
+     * (Dakar, ClicGraph, cybersécurité). Rien d'autre.
+     */
     paragraphs: [
-      'Je crée à la croisée du numérique et du physique : je conçois en 3D, je visualise, je fabrique, puis j’automatise.',
-      'Mes projets relient la conception 3D, la fabrication, l’électronique, la robotique et l’automatisation. À travers ClicGraph et JeeFSYS, je transforme mes idées en visualisations, prototypes, systèmes et solutions concrètes.',
+      'Je travaille entre deux mondes : la conception numérique et les systèmes techniques. Technicien supérieur en informatique industrielle, réseaux et automatisme, je suis aussi graphiste et concepteur 3D. Je suis basé à Dakar.',
+      'Ma formation est technique : un baccalauréat T2 en électrotechnique et électronique, puis un diplôme de technicien supérieur au CNQP. Depuis 2018, je travaille aussi comme graphiste et concepteur 3D indépendant.',
+      'Ce travail m’a amené sur des projets très différents : visualisations architecturales avec des architectes, des designers d’intérieur et des urbanistes, équipements urbains et espaces publics, publicité, environnements immersifs, produits, pièces techniques, prototypes — jusqu’à des moules sur mesure pour la pâtisserie.',
+      'Aujourd’hui, je relie ces deux parcours : je modélise, j’imprime en 3D et je prototype, puis je programme des équipements industriels et des systèmes embarqués Arduino et ESP32. ClicGraph, mon studio créatif dédié au rendu 3D et à la conception technique, et JeeFSYS, tourné vers la robotique et l’automatisation, portent ces deux facettes.',
+      'Je poursuis une licence en cybersécurité à l’UN-CHK, pour renforcer la protection des systèmes et l’intégration sécurisée des technologies intelligentes.',
     ],
     portraitAlt: 'Portrait d’Ibrahima Faye',
-    /** Fiche d'identité (valeurs tirées des données du site : domaines, entités). */
-    facts: {
-      profile: 'Profil',
-      creation: 'Création numérique',
-      technology: 'Technologie',
-      universe: 'Univers',
-    },
-    /** Parcours / formation : affiché seulement s'il est renseigné (Contenu du site → À propos). */
+    /** Fiche d'identité (modifiable : Contenu du site → À propos). */
+    facts: [
+      {
+        label: 'Formation',
+        value: 'Technicien supérieur en informatique industrielle, réseaux & automatisme (CNQP)',
+      },
+      { label: 'Création', value: 'Graphiste & concepteur 3D indépendant depuis 2018' },
+      { label: 'En cours', value: 'Licence en cybersécurité — UN-CHK' },
+      { label: 'Basé à', value: 'Dakar' },
+      { label: 'Univers', value: 'ClicGraph · JeeFSYS' },
+    ],
+    /** Parcours (modifiable : Contenu du site → À propos). kind : formation | experience. */
     timelineLabel: 'Parcours',
+    timelineFormation: 'Formation',
+    timelineExperience: 'Expérience',
+    timeline: [
+      {
+        id: 'bac',
+        kind: 'formation',
+        period: 'Baccalauréat',
+        title: 'Baccalauréat technique T2 — Électrotechnique · Électronique',
+        text: 'Lycée Seydina Limamou Laye',
+      },
+      {
+        id: 'cnqp',
+        kind: 'formation',
+        period: 'Diplôme',
+        title: 'Technicien supérieur en informatique industrielle, réseaux & automatisme',
+        text: 'CNQP',
+      },
+      {
+        id: 'licence',
+        kind: 'formation',
+        period: 'En cours',
+        title: 'Licence en cybersécurité',
+        text: 'UN-CHK',
+      },
+      {
+        id: 'independant',
+        kind: 'experience',
+        period: 'Depuis 2018',
+        title: 'Graphiste & concepteur 3D indépendant',
+        text: 'Projets architecturaux et industriels, publicité, environnements immersifs, produits, pièces techniques et prototypes, supports graphiques et techniques — avec des architectes, des designers d’intérieur et des urbanistes.',
+      },
+      {
+        id: 'specialites',
+        kind: 'experience',
+        period: 'Spécialités',
+        title: 'Automatisation, informatique industrielle & prototypage',
+        text: 'Automatisation des systèmes, programmation d’équipements industriels, systèmes embarqués Arduino / ESP32, modélisation mécanique, impression 3D et solutions robotiques.',
+      },
+    ],
     stepsLabel: 'Mon approche',
     steps: [
       { title: 'Concevoir', text: 'Imaginer, modéliser, dessiner.' },

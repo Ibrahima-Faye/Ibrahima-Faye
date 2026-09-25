@@ -300,6 +300,26 @@ const tone = (slug: string) =>
         <p class="eco-bridge-text">{t.ecosystem.bridgeText}</p>
       </div>
     )}
+
+    {/* Comment les deux univers se complètent : le parcours d'un projet (texte modifiable) */}
+    {composed && t.ecosystem.flow.length > 0 && (
+      <ol class="eco-flow">
+        {t.ecosystem.flow.map((step, i) => (
+          <li class="eco-flow-step" data-side={step.side} data-reveal>
+            <span class="eco-flow-num">{String(i + 1).padStart(2, '0')}</span>
+            <span class="eco-flow-side">
+              {step.side === 'clicgraph'
+                ? entities[0]!.name
+                : step.side === 'jeefsys'
+                  ? entities[1]!.name
+                  : `${entities[0]!.name} × ${entities[1]!.name}`}
+            </span>
+            <p class="eco-flow-title">{step.title}</p>
+            {step.text && <p class="eco-flow-text">{step.text}</p>}
+          </li>
+        ))}
+      </ol>
+    )}
   </div>
 </section>
 
@@ -919,8 +939,107 @@ const tone = (slug: string) =>
     line-height: 1.6;
   }
 
+  /* ------------------------------------------------------------------ parcours d'un projet entre les deux univers */
+  .eco-flow {
+    position: relative;
+    display: grid;
+    gap: 1rem;
+    max-width: 64rem;
+    margin: 3rem auto 0;
+  }
+
+  @media (min-width: 48rem) {
+    .eco-flow {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* fil lumineux qui relie les trois étapes */
+    .eco-flow::before {
+      content: '';
+      position: absolute;
+      top: 1.6rem;
+      left: 8%;
+      right: 8%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        var(--color-mauve-400),
+        var(--color-lavender-200),
+        var(--color-electric-400)
+      );
+      opacity: 0.45;
+    }
+  }
+
+  .eco-flow-step {
+    --tone: var(--color-lavender-200);
+    position: relative;
+    padding: 1.25rem 1.25rem 1.4rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: var(--radius-card, 0.9rem);
+    background: rgb(7 11 30 / 0.7);
+    backdrop-filter: blur(10px);
+    transition:
+      border-color 0.5s var(--ease-out-expo),
+      transform 0.6s var(--ease-out-expo);
+  }
+
+  .eco-flow-step[data-side='clicgraph'] {
+    --tone: var(--color-mauve-400);
+  }
+
+  .eco-flow-step[data-side='jeefsys'] {
+    --tone: var(--color-electric-400);
+  }
+
+  .eco-flow-step:hover {
+    border-color: color-mix(in oklab, var(--tone) 50%, transparent);
+    transform: translateY(-3px);
+  }
+
+  .eco-flow-num {
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 1px solid color-mix(in oklab, var(--tone) 60%, transparent);
+    border-radius: 50%;
+    background: var(--color-ink-950);
+    color: var(--tone);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    box-shadow: 0 0 18px -6px var(--tone);
+  }
+
+  .eco-flow-side {
+    display: block;
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--tone);
+  }
+
+  .eco-flow-title {
+    margin-top: 0.4rem;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .eco-flow-text {
+    margin-top: 0.4rem;
+    color: var(--color-paper-muted);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .eco-bridge-x {
+    .eco-bridge-x,
+    .eco-flow-step {
       transition: none;
     }
   }

@@ -53,7 +53,7 @@ src/
 ├── views/                       ← contenu des pages (reçoivent la langue) : Home, Projets, Projet
 ├── pages/                       ← routes : de simples appels aux vues
 ├── components/
-│   ├── sections/                ← Hero, Manifeste, Expertises, Projets, Écosystème, À propos, Contact
+│   ├── sections/                ← Hero, À propos, Expertises, Écosystème, Projets, Contact (+ Manifeste, masqué)
 │   ├── projects/                ← carte projet, visuel de remplacement
 │   ├── gallery/                 ← galerie à ratio respecté + visionneuse plein écran
 │   ├── layout/ · seo/ · ui/     ← en-tête, pied de page, SEO, icônes, boutons
@@ -72,8 +72,9 @@ public/                          ← favicon, robots.txt, en-têtes HTTP
 - **Médias sans recadrage** : cadres calculés à partir du ratio réel de chaque fichier ; galerie « justifiée » en CSS pur ;
   visionneuse en `<dialog>` natif (focus piégé, Échap, clavier, plein écran) avec zoom (molette, double-tap, pincement),
   déplacement, miniatures, ouverture animée depuis la vignette et gestes tactiles.
-- **Expertises** : 7 domaines reliés aux projets qui les démontrent, et les outils réellement cités dans les fiches
-  (`src/data/tools.ts`, icônes remplaçables depuis l'administration) — sans jauge ni pourcentage.
+- **Expertises** : 8 domaines, chacun avec une illustration technique animée en SVG + CSS pur (aucun WebGL), remplaçable
+  par une vraie image ou vidéo (`src/assets/domaines/<domaine>.jpg|mp4`), ses outils et les projets qui le démontrent ;
+  puis les outils du CV regroupés (création / ingénierie), niveaux réglables dans l'administration, sans pourcentage.
 - **GSAP** (+ ScrollTrigger, SplitText) : révélations au scroll, titres découpés, parallaxe, boutons magnétiques.
   Tout est piloté par des attributs HTML (`data-reveal`, `data-split`…), documentés dans `src/scripts/motion.ts`.
   `prefers-reduced-motion` est respecté : aucune animation, tout le contenu reste visible.

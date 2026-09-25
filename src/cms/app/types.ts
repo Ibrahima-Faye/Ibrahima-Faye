@@ -7,8 +7,8 @@ export interface Meta {
   entities: { slug: string; name: string; role: string }[];
   statuses: { slug: string; label: string }[];
   spans: SpanInfo[];
-  /** Technologies citées dans les fiches projet (outils affichés automatiquement dans Expertises). */
-  technologies?: string[];
+  /** Projets (Expertises → Outils : projets associés). */
+  projects?: { id: string; title: string; draft: boolean }[];
   /** Studio : textes d'origine du site (chemin du dictionnaire → texte) et libellés de navigation. */
   studio?: {
     texts: Record<string, string | string[]>;

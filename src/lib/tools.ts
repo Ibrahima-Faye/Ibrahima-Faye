@@ -1,13 +1,23 @@
 /**
- * Expertises « compétence → projet » : à partir des fiches projet (catégorie + technologies) et des réglages
- * de l'administration, calcule
- *  - pour chaque domaine : les projets qui le démontrent, les outils et le matériel cités ;
- *  - la liste des outils (logiciels, cartes) avec leur catégorie et les projets qui les utilisent.
+ * Expertises : outils (CV) ↔ domaines ↔ projets, avec les réglages de l'administration.
  *
- * Fonctions pures (testées dans tests/tools.test.ts) : rien n'est inventé, tout vient des données.
+ *  - toolViews   : les outils affichés, dans l'ordre, avec catégorie, niveau (s'il est réglé),
+ *                  domaines et projets associés ;
+ *  - toolGroups  : les mêmes, regroupés (Création & design / Technologies & ingénierie → sous-catégories) ;
+ *  - domainViews : pour chaque domaine, ses projets, ses outils et le matériel cité dans ses projets.
+ *
+ * Fonctions pures (tests/tools.test.ts) : rien n'est inventé — outils du CV, projets réels, niveaux réglés.
  */
 import { domainSlugs, isDomainSlug, type DomainSlug } from '@/data/domains';
-import { TOOLS, type ToolDef } from '@/data/tools';
+import {
+  TOOL_GROUPS,
+  TOOL_SUBGROUPS,
+  TOOLS,
+  isToolSubgroup,
+  toolLevel,
+  type ToolDef,
+  type ToolSubgroup,
+} from '@/data/tools';
 import { isToolIcon, type ToolIconName } from './tool-icons';
 import type { ContentSettings } from './studio/content';
 
@@ -25,7 +35,9 @@ export interface ToolView {
   usage?: string;
   /** Icône intégrée, ou chemin d'une image téléversée. */
   icon: { builtin: ToolIconName } | { src: string };
-  /** Domaines où l'outil est utilisé (projets), sinon son domaine de repli. */
+  group?: ToolSubgroup;
+  /** Niveau réglé dans l'administration (aucun par défaut). */
+  level?: { id: string; label: string; value: number };
   domains: DomainSlug[];
   projects: ProjectRef[];
 }
@@ -33,80 +45,65 @@ export interface ToolView {
 export interface DomainView {
   slug: DomainSlug;
   projects: ProjectRef[];
-  /** Outils (logiciels, cartes) cités dans les projets du domaine. */
-  tools: string[];
-  /** Matériel et techniques cités (y compris les technologies inconnues du registre). */
+  tools: ToolView[];
+  /** Matériel et techniques cités dans les projets du domaine (dont les technologies inconnues). */
   extras: string[];
 }
 
 const norm = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+const IMAGE = /^(\/|https?:\/\/)\S+\.(svg|png|webp|jpe?g|avif)$/i;
 
-/** Outil du registre correspondant à une technologie citée dans une fiche. */
+/** Outil ou matériel du registre correspondant à une technologie citée dans une fiche. */
 export function findTool(tech: string): ToolDef | undefined {
   const key = norm(tech);
   return TOOLS.find((t) => t.id === key || t.aliases.includes(key));
 }
 
-const isCard = (tool: ToolDef) => tool.kind === 'software' || tool.kind === 'board';
-const IMAGE = /^(\/|https?:\/\/)\S+\.(svg|png|webp|jpe?g|avif)$/i;
-
-/** Domaines : projets qui les démontrent, outils et matériel cités. */
-export function domainViews(
-  projects: readonly ProjectRef[],
-  domainTitles: Partial<Record<DomainSlug, string>> = {},
-): Map<DomainSlug, DomainView> {
-  const titles = new Set(Object.values(domainTitles).map((t) => norm(t ?? '')));
-  const views = new Map<DomainSlug, DomainView>(
-    domainSlugs.map((slug) => [slug, { slug, projects: [], tools: [], extras: [] }]),
-  );
-  for (const project of projects) {
-    const view = views.get(project.category);
-    if (!view) continue;
-    view.projects.push(project);
-    for (const tech of project.technologies) {
-      // « Automatisation industrielle » cité comme technologie = le domaine lui-même : pas de doublon
-      if (!tech.trim() || titles.has(norm(tech))) continue;
-      const tool = findTool(tech);
-      const label = tool?.name ?? tech.trim();
-      const list = tool && isCard(tool) ? view.tools : view.extras;
-      if (!list.includes(label)) list.push(label);
-    }
-  }
-  return views;
-}
-
-/** Outils affichés (logiciels, cartes) : cités dans un projet publié ou ajoutés dans l'administration. */
+/** Outils affichés : ceux du CV (registre) et ceux ajoutés dans l'administration. */
 export function toolViews(
   projects: readonly ProjectRef[],
   content: Pick<ContentSettings, 'tools'> = {},
 ): ToolView[] {
   const items = content.tools?.items ?? [];
-  const used = new Map<string, ProjectRef[]>();
+  const cited = new Map<string, ProjectRef[]>();
   for (const project of projects)
     for (const tech of project.technologies) {
-      const tool = findTool(tech);
-      if (!tool || !isCard(tool)) continue;
-      const list = used.get(tool.id) ?? [];
+      const def = findTool(tech);
+      if (def?.kind !== 'tool') continue;
+      const list = cited.get(def.id) ?? [];
       if (!list.some((p) => p.id === project.id)) list.push(project);
-      used.set(tool.id, list);
+      cited.set(def.id, list);
     }
 
-  // ordre : celui de l'administration, puis les outils cités (ordre du registre)
-  const ids = [...items.map((i) => i.id), ...TOOLS.filter((t) => used.has(t.id)).map((t) => t.id)];
+  // ordre : celui de l'administration, puis le registre
+  const ids = [
+    ...items.map((i) => i.id),
+    ...TOOLS.filter((t) => t.kind === 'tool').map((t) => t.id),
+  ];
   const views: ToolView[] = [];
   for (const id of new Set(ids)) {
     const item = items.find((i) => i.id === id);
     const def = TOOLS.find((t) => t.id === id);
-    if (item?.visible === false) continue;
+    if (item?.visible === false || def?.kind === 'hardware') continue;
     const name = item?.name?.trim() || def?.name;
-    // affiché s'il est cité dans un projet publié, ou ajouté (nouvel outil, ou outil connu renommé)
-    const added = Boolean(item && (!def || item.name?.trim()));
-    if (!name || (!used.has(id) && !added)) continue;
-    const toolProjects = used.get(id) ?? [];
-    const fromProjects = [...new Set(toolProjects.map((p) => p.category))];
-    const fallback = isDomainSlug(item?.domain) ? item!.domain : def?.domain;
-    const domains = fromProjects.length ? fromProjects : fallback ? [fallback as DomainSlug] : [];
+    if (!name) continue;
+
+    // projets : cités dans les fiches + choisis dans l'administration (projets publiés uniquement)
+    const chosen = (item?.projects ?? [])
+      .map((pid) => projects.find((p) => p.id === pid))
+      .filter((p): p is ProjectRef => Boolean(p));
+    const toolProjects = [...(cited.get(id) ?? [])];
+    for (const p of chosen) if (!toolProjects.some((x) => x.id === p.id)) toolProjects.push(p);
+
+    // domaines : ceux réglés dans l'administration, sinon ceux du registre + ceux des projets
+    const own = item?.domains?.filter(isDomainSlug);
+    const domains = own?.length
+      ? own
+      : [...(def?.domains ?? []), ...toolProjects.map((p) => p.category)];
+
     const icon = item?.icon?.trim();
+    const group = isToolSubgroup(item?.group) ? item!.group : def?.group;
+    const level = toolLevel(item?.level);
     views.push({
       id,
       name,
@@ -115,9 +112,63 @@ export function toolViews(
         icon && IMAGE.test(icon)
           ? { src: icon }
           : { builtin: isToolIcon(icon) ? icon : (def?.icon ?? 'tool') },
+      group,
+      level: level ? { ...level } : undefined,
       domains: domainSlugs.filter((d) => domains.includes(d)),
       projects: toolProjects,
     });
+  }
+  return views;
+}
+
+/** Outils regroupés par catégorie puis sous-catégorie (groupes vides retirés). */
+export function toolGroups(tools: readonly ToolView[]) {
+  const others = tools.filter((t) => !t.group);
+  return [
+    ...TOOL_GROUPS.map((g) => ({
+      id: g.id as string,
+      label: g.label as string,
+      subgroups: TOOL_SUBGROUPS.filter((s) => s.group === g.id)
+        .map((s) => ({
+          id: s.id as string,
+          label: s.label as string,
+          tools: tools.filter((t) => t.group === s.id),
+        }))
+        .filter((s) => s.tools.length > 0),
+    })),
+    {
+      id: 'autres',
+      label: 'Autres outils',
+      subgroups: [{ id: 'autres', label: '', tools: others }],
+    },
+  ].filter((g) => g.subgroups.some((s) => s.tools.length > 0));
+}
+
+/** Domaines : projets qui les démontrent, outils qui y interviennent, matériel cité. */
+export function domainViews(
+  projects: readonly ProjectRef[],
+  tools: readonly ToolView[],
+  domainTitles: Partial<Record<DomainSlug, string>> = {},
+): Map<DomainSlug, DomainView> {
+  const titles = new Set(Object.values(domainTitles).map((t) => norm(t ?? '')));
+  const views = new Map<DomainSlug, DomainView>(
+    domainSlugs.map((slug) => [
+      slug,
+      { slug, projects: [], tools: tools.filter((t) => t.domains.includes(slug)), extras: [] },
+    ]),
+  );
+  for (const project of projects) {
+    const view = views.get(project.category);
+    if (!view) continue;
+    view.projects.push(project);
+    for (const tech of project.technologies) {
+      // « Automatisation industrielle » cité comme technologie = le domaine lui-même : pas de doublon
+      if (!tech.trim() || titles.has(norm(tech))) continue;
+      const def = findTool(tech);
+      if (def?.kind === 'tool') continue; // déjà parmi les outils du domaine
+      const label = def?.name ?? tech.trim();
+      if (!view.extras.includes(label)) view.extras.push(label);
+    }
   }
   return views;
 }

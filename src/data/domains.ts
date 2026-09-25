@@ -1,5 +1,5 @@
 /**
- * Les 7 domaines d'expertise. C'est LA source de vérité :
+ * Les domaines d'expertise. C'est LA source de vérité :
  * - l'ordre ci-dessous = l'ordre d'affichage (01 → 07) ;
  * - le champ `category` d'un projet ne peut prendre que ces valeurs ;
  * - les textes (titre, description) sont dans src/i18n/ui/*.ts sous la clé `domains`.
@@ -14,6 +14,7 @@ export const domainSlugs = [
   'robotique',
   'automatisation',
   'electronique-electrotechnique',
+  'informatique-industrielle',
   'prototypage',
 ] as const;
 

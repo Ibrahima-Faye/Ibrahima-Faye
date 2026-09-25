@@ -126,14 +126,15 @@ describe('Sections & navigation', () => {
       'hero',
       'marquee',
       'about',
-      'ecosystem',
       'expertises',
+      'ecosystem',
       'projects',
       'contact',
     ]);
     expect(sectionVisible({ sections: { manifesto: { visible: true } } }, 'manifesto')).toBe(true);
     expect(sectionVisible({ sections: { about: { visible: false } } }, 'about')).toBe(false);
-    expect(sectionProps({}, 'expertises', sectionOrder({})).index).toBe('03');
+    expect(sectionProps({}, 'expertises', sectionOrder({})).index).toBe('02');
+    expect(sectionProps({}, 'ecosystem', sectionOrder({})).index).toBe('03');
     expect(sectionProps({}, 'hero', sectionOrder({})).index).toBeUndefined();
     const order = sectionOrder({ order: ['contact', 'hero', 'contact', 'inconnue'] });
     expect(order.slice(0, 2)).toEqual(['contact', 'hero']);
@@ -178,8 +179,8 @@ describe('Sections & navigation', () => {
   it('navigation : liens d’origine sans réglage', () => {
     expect(navLinks({}).map((l) => l.id)).toEqual([
       'a-propos',
-      'ecosysteme',
       'expertises',
+      'ecosysteme',
       'projets',
       'contact',
     ]);

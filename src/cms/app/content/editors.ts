@@ -7,7 +7,7 @@ import { h, icon, toast } from '../ui';
 import { getPath, row, segmented, selectControl, setPath, toggleControl } from '../studio/controls';
 import { LINK_ICONS, isLinkIcon } from '@/lib/icons';
 import { TOOL_ICONS } from '@/lib/tool-icons';
-import { TOOLS } from '@/data/tools';
+import { TOOL_LEVELS, TOOL_SUBGROUPS, TOOLS } from '@/data/tools';
 import {
   linkHref,
   linkItems,
@@ -395,33 +395,112 @@ function expertises(ctx: Ctx) {
   ];
 }
 
+/** Écosystème : les étapes qui montrent comment un projet passe d'un univers à l'autre. */
+function flowEditor(ctx: Ctx) {
+  type Step = { title: string; text?: string; side?: string };
+  const origin = (dict(ctx, 'ecosystem.flow') as Step[]) ?? [];
+  const steps = content(ctx).ecosystem?.flow ?? origin;
+  const save = (list: Step[]) =>
+    change(ctx, (c) => {
+      const same = JSON.stringify(list) === JSON.stringify(origin);
+      setPath(
+        c as Record<string, unknown>,
+        'ecosystem.flow',
+        same || !list.length ? undefined : list,
+      );
+    });
+  return [
+    heading('Complémentarité', 'Les étapes affichées sous « ClicGraph × JeeFSYS ».'),
+    listEditor<Step>(ctx, {
+      items: steps,
+      save,
+      title: (st) => st.title || 'Étape',
+      removable: () => true,
+      add: {
+        label: 'Ajouter une étape',
+        create: () => ({ title: 'Nouvelle étape', side: 'both' }),
+      },
+      body: (st, _k, update) => [
+        plainInput('Titre', st.title, 'Titre', (v) => update({ title: v ?? '' })),
+        plainInput('Texte', st.text, 'Texte', (v) => update({ text: v })),
+        row(
+          'Univers',
+          segmented<string>(
+            st.side ?? 'both',
+            [
+              { value: 'clicgraph', label: 'ClicGraph' },
+              { value: 'both', label: 'Les deux' },
+              { value: 'jeefsys', label: 'JeeFSYS' },
+            ],
+            (v) => update({ side: v }),
+          ),
+        ),
+      ],
+    }),
+  ];
+}
+
+/** Choix multiple en pastilles (domaines, projets). */
+function chipsControl(
+  options: { value: string; label: string }[],
+  selected: string[],
+  onChange: (next: string[]) => void,
+) {
+  let current = [...selected];
+  const box = h('div', { class: 'cms-cats' });
+  const draw = () =>
+    box.replaceChildren(
+      ...options.map((o) =>
+        h(
+          'button',
+          {
+            type: 'button',
+            class: `cms-cat${current.includes(o.value) ? ' is-on' : ''}`,
+            'aria-pressed': String(current.includes(o.value)),
+            onclick: () => {
+              current = current.includes(o.value)
+                ? current.filter((v) => v !== o.value)
+                : [...current, o.value];
+              onChange(current);
+              draw();
+            },
+          },
+          o.label,
+        ),
+      ),
+    );
+  draw();
+  return box;
+}
+
 /**
- * Outils : ceux cités dans les fiches projet (champ « Technologies ») s'affichent tout seuls.
- * Ici : les renommer, changer leur icône (intégrée ou image), leur usage, les masquer, en ajouter.
+ * Outils (section Expertises) — source : le CV (src/data/tools.ts). Tout se règle ici, sans code :
+ * nom, icône (intégrée ou image), catégorie, description, niveau, ordre, domaines, projets, visibilité ;
+ * et de nouveaux outils peuvent être ajoutés.
  */
 function toolsEditor(ctx: Ctx) {
   const own = content(ctx).tools?.items ?? [];
-  const cited = TOOLS.filter(
-    (tool) =>
-      (tool.kind === 'software' || tool.kind === 'board') &&
-      ctx.meta.technologies?.some((tech) => tool.aliases.includes(tech.trim().toLowerCase())),
-  );
+  const registry = TOOLS.filter((tool) => tool.kind === 'tool');
   const all: ToolItem[] = [
     ...own,
-    ...cited.filter((tool) => !own.some((i) => i.id === tool.id)).map((tool) => ({ id: tool.id })),
+    ...registry
+      .filter((tool) => !own.some((i) => i.id === tool.id))
+      .map((tool) => ({ id: tool.id })),
   ];
   const save = (list: ToolItem[]) =>
     change(ctx, (c) => {
-      // valeurs vides retirées ; l'ordre est conservé (un outil cité non modifié = son seul id)
+      // valeurs vides retirées ; l'ordre est conservé (un outil non modifié = son seul identifiant)
       const items = list.map(
         (i) =>
           Object.fromEntries(
-            Object.entries(i).filter(([, v]) => v !== undefined && v !== ''),
+            Object.entries(i).filter(
+              ([, v]) => v !== undefined && v !== '' && !(Array.isArray(v) && !v.length),
+            ),
           ) as ToolItem,
       );
       const untouched =
-        items.length === cited.length &&
-        items.every((i, k) => i.id === cited[k]!.id && Object.keys(i).length === 1);
+        items.length === registry.length &&
+        items.every((i, k) => i.id === registry[k]!.id && Object.keys(i).length === 1);
       if (untouched) delete c.tools;
       else c.tools = { ...c.tools, items };
     });
@@ -429,22 +508,39 @@ function toolsEditor(ctx: Ctx) {
     { value: '', label: 'Icône par défaut' },
     ...Object.entries(TOOL_ICONS).map(([value, def]) => ({ value, label: def.label })),
   ];
+  const groupOptions = [
+    { value: '', label: 'Catégorie par défaut' },
+    ...TOOL_SUBGROUPS.map((s) => ({ value: s.id, label: `${s.groupLabel} — ${s.label}` })),
+  ];
+  const levelOptions = [
+    { value: '', label: 'Non renseigné (pas de barre)' },
+    ...TOOL_LEVELS.map((l) => ({ value: l.id, label: l.label })),
+  ];
+  const domains = ctx.meta.categories.map((c) => ({ value: c.slug, label: c.title }));
+  const projects = (ctx.meta.projects ?? []).map((p) => ({
+    value: p.id,
+    label: p.draft ? `${p.title} (brouillon)` : p.title,
+  }));
   let n = 1;
   while (all.some((i) => i.id === `outil-${n}`)) n++;
   return [
     heading(
       'Outils',
-      'Les outils cités dans vos fiches projet (« Technologies ») apparaissent automatiquement. Aucun niveau n’est affiché : seulement l’outil, sa catégorie, son usage et les projets qui l’utilisent.',
+      'Les outils de votre CV. Niveau : aucun par défaut — la barre n’apparaît qu’une fois le niveau choisi. Les projets dont la fiche cite l’outil (« Technologies ») lui sont associés automatiquement.',
     ),
     dictField(ctx, 'Titre', 'expertises.toolsTitle'),
     dictField(ctx, 'Introduction', 'expertises.toolsIntro', 'text'),
     listEditor<ToolItem>(ctx, {
       items: all,
       save,
-      title: (i) => i.name || TOOLS.find((t) => t.id === i.id)?.name || 'Nouvel outil',
+      title: (i) => {
+        const def = TOOLS.find((t) => t.id === i.id);
+        const level = TOOL_LEVELS.find((l) => l.id === i.level);
+        return `${i.name || def?.name || 'Nouvel outil'}${level ? ` · ${level.label}` : ''}`;
+      },
       visible: (i) => i.visible !== false,
       toggleVisible: (i) => ({ ...i, visible: i.visible === false ? undefined : false }),
-      removable: (i) => !cited.some((t) => t.id === i.id),
+      removable: (i) => !registry.some((t) => t.id === i.id),
       add: {
         label: 'Ajouter un outil',
         create: () => ({ id: `outil-${n}`, name: 'Nouvel outil' }),
@@ -454,20 +550,22 @@ function toolsEditor(ctx: Ctx) {
         const image = i.icon && /^(\/|https?:\/\/)/.test(i.icon) ? i.icon : undefined;
         return [
           plainInput('Nom', i.name, def?.name ?? 'Nom de l’outil', (v) => update({ name: v })),
-          plainInput('Usage', i.usage, def?.usage ?? 'Ex. Modélisation 3D', (v) =>
+          plainInput('Description', i.usage, def?.usage ?? 'Ex. Modélisation 3D', (v) =>
             update({ usage: v }),
           ),
-          def
-            ? null
-            : row(
-                'Catégorie',
-                selectControl<string>(
-                  i.domain,
-                  [{ value: '', label: 'Aucune' }, ...domainOptions(ctx)],
-                  (v) => update({ domain: v }),
-                ),
-                { hint: 'Pour un outil cité dans un projet, la catégorie vient du projet.' },
-              ),
+          row(
+            'Niveau',
+            selectControl<string>(
+              i.level,
+              levelOptions,
+              (v) => (update({ level: v }), ctx.redraw()),
+            ),
+            { hint: 'Affiché sous forme de barre animée, sans pourcentage.' },
+          ),
+          row(
+            'Catégorie',
+            selectControl<string>(i.group, groupOptions, (v) => update({ group: v })),
+          ),
           row(
             'Icône',
             selectControl<string>(image ? '' : i.icon, iconOptions, (v) => {
@@ -480,6 +578,20 @@ function toolsEditor(ctx: Ctx) {
             imagePicker(image, (path) => (update({ icon: path }), ctx.redraw())),
             { hint: 'Facultatif : remplace l’icône (SVG ou PNG carré, fond transparent).' },
           ),
+          row(
+            'Domaines',
+            chipsControl(domains, i.domains ?? [...(def?.domains ?? [])], (v) =>
+              update({ domains: v }),
+            ),
+            { hint: 'Domaines d’expertise où l’outil apparaît.' },
+          ),
+          projects.length
+            ? row(
+                'Projets associés',
+                chipsControl(projects, i.projects ?? [], (v) => update({ projects: v })),
+                { hint: 'En plus des projets dont la fiche cite déjà l’outil.' },
+              )
+            : null,
         ];
       },
     }),
@@ -564,6 +676,7 @@ function ecosystem(ctx: Ctx) {
       'text',
       'Affichée sous les deux pôles, après « ClicGraph × JeeFSYS ».',
     ),
+    ...flowEditor(ctx),
     dictField(
       ctx,
       'Bouton par défaut',
@@ -665,11 +778,26 @@ function about(ctx: Ctx) {
     change(ctx, (c) =>
       setPath(c as Record<string, unknown>, 'about.blocks', list.length ? list : undefined),
     );
-  const timeline = content(ctx).about?.timeline ?? [];
+  // parcours et fiche : ceux d'origine (fr.ts, sources : CV) tant qu'ils ne sont pas modifiés ici
+  const originTimeline = (dict(ctx, 'about.timeline') as TimelineItem[]) ?? [];
+  const timeline = content(ctx).about?.timeline ?? originTimeline;
   const saveTimeline = (list: TimelineItem[]) =>
-    change(ctx, (c) =>
-      setPath(c as Record<string, unknown>, 'about.timeline', list.length ? list : undefined),
-    );
+    change(ctx, (c) => {
+      const same = JSON.stringify(list) === JSON.stringify(originTimeline);
+      setPath(
+        c as Record<string, unknown>,
+        'about.timeline',
+        same || !list.length ? undefined : list,
+      );
+    });
+  type Fact = { label: string; value: string };
+  const originFacts = (dict(ctx, 'about.facts') as Fact[]) ?? [];
+  const facts = content(ctx).about?.facts ?? originFacts;
+  const saveFacts = (list: Fact[]) =>
+    change(ctx, (c) => {
+      const same = JSON.stringify(list) === JSON.stringify(originFacts);
+      setPath(c as Record<string, unknown>, 'about.facts', same || !list.length ? undefined : list);
+    });
   let step = 1;
   while (timeline.some((i) => i.id === `etape-${step}`)) step++;
   let n = 1;
@@ -704,11 +832,25 @@ function about(ctx: Ctx) {
       'Ligne vide entre deux paragraphes. Le premier est mis en avant.',
     ),
     dictField(ctx, 'Texte alternatif du portrait', 'about.portraitAlt'),
+    heading('Fiche', 'Les lignes « libellé — valeur » affichées sous la présentation.'),
+    listEditor<Fact>(ctx, {
+      items: facts,
+      save: saveFacts,
+      title: (f) => f.label || 'Ligne',
+      removable: () => true,
+      add: { label: 'Ajouter une ligne', create: () => ({ label: 'Libellé', value: '' }) },
+      body: (f, _k, update) => [
+        plainInput('Libellé', f.label, 'Ex. Formation', (v) => update({ label: v ?? '' })),
+        plainInput('Valeur', f.value, 'Texte', (v) => update({ value: v ?? '' })),
+      ],
+    }),
     heading(
-      'Parcours / formation',
-      'Rien n’est affiché sur le site tant que cette liste est vide. N’y mettez que des informations exactes.',
+      'Parcours',
+      'Deux colonnes sur le site : Formation et Expérience. N’y mettez que des informations exactes.',
     ),
     dictField(ctx, 'Titre', 'about.timelineLabel'),
+    dictField(ctx, 'Colonne « Formation »', 'about.timelineFormation'),
+    dictField(ctx, 'Colonne « Expérience »', 'about.timelineExperience'),
     listEditor<TimelineItem>(ctx, {
       items: timeline,
       save: saveTimeline,
@@ -716,11 +858,22 @@ function about(ctx: Ctx) {
       removable: () => true,
       add: {
         label: 'Ajouter une étape',
-        create: () => ({ id: `etape-${step}`, title: 'Nouvelle étape' }),
+        create: () => ({ id: `etape-${step}`, kind: 'formation', title: 'Nouvelle étape' }),
       },
       body: (i, _k, update) => [
-        plainInput('Période', i.period, 'Ex. 2021 – 2023', (v) => update({ period: v })),
-        plainInput('Titre', i.title, 'Ex. Formation, poste…', (v) => update({ title: v ?? '' })),
+        row(
+          'Colonne',
+          segmented<string>(
+            i.kind === 'experience' ? 'experience' : 'formation',
+            [
+              { value: 'formation', label: 'Formation' },
+              { value: 'experience', label: 'Expérience' },
+            ],
+            (v) => update({ kind: v }),
+          ),
+        ),
+        plainInput('Repère', i.period, 'Ex. Depuis 2018, En cours…', (v) => update({ period: v })),
+        plainInput('Titre', i.title, 'Ex. Diplôme, poste…', (v) => update({ title: v ?? '' })),
         plainRich('Détail', i.text, 'Facultatif', (v) => update({ text: v })),
       ],
     }),

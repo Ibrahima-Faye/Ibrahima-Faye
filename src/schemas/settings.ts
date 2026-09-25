@@ -209,6 +209,15 @@ export const contentSchema = z.looseObject({
           }),
         )
         .optional(),
+      flow: z
+        .array(
+          z.looseObject({
+            title: shortText,
+            text: text.optional(),
+            side: z.string().max(40).optional(),
+          }),
+        )
+        .optional(),
     })
     .optional(),
   tools: z
@@ -220,7 +229,10 @@ export const contentSchema = z.looseObject({
             name: shortText.optional(),
             icon: shortText.optional(),
             usage: shortText.optional(),
-            domain: z.string().optional(),
+            group: z.string().max(60).optional(),
+            level: z.string().max(40).optional(),
+            domains: z.array(z.string().max(60)).optional(),
+            projects: z.array(z.string().max(120)).optional(),
             visible: z.boolean().optional(),
           }),
         )
@@ -230,10 +242,12 @@ export const contentSchema = z.looseObject({
   about: z
     .looseObject({
       steps: z.array(z.looseObject({ title: shortText, text: text })).optional(),
+      facts: z.array(z.looseObject({ label: shortText, value: text })).optional(),
       timeline: z
         .array(
           z.looseObject({
             id: z.string().min(1).max(60),
+            kind: z.string().max(40).optional(),
             period: shortText.optional(),
             title: shortText,
             text: text.optional(),

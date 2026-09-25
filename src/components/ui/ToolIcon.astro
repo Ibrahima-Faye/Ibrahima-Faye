@@ -1,7 +1,8 @@
 ---
 /**
- * Icône d'un outil : logo officiel (rempli), pictogramme au trait, ou image téléversée.
- * Registre : src/lib/tool-icons.ts — remplacement depuis l'administration (Expertises → Outils).
+ * Icône d'un outil : logo officiel (couleur de la marque), tuile d'application (lettres), pictogramme,
+ * ou image téléversée. Registre : src/lib/tool-icons.ts — remplacement depuis l'administration.
+ * `tint={false}` : icône dans la couleur du texte (petites puces).
  */
 import { TOOL_ICONS } from '@/lib/tool-icons';
 import type { ToolView } from '@/lib/tools';
@@ -9,17 +10,58 @@ import type { ToolView } from '@/lib/tools';
 interface Props {
   icon: ToolView['icon'];
   class?: string;
+  tint?: boolean;
 }
 
-const { icon, class: className } = Astro.props;
+const { icon, class: className, tint = true } = Astro.props;
 const def = 'builtin' in icon ? TOOL_ICONS[icon.builtin] : undefined;
+const color = tint && def && 'color' in def ? def.color : undefined;
 ---
 
 {'src' in icon ? (
   <img src={icon.src} alt="" class:list={['object-contain', className]} loading="lazy" />
 ) : def?.kind === 'brand' ? (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" class={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    class={className}
+    style={color ? `color:${color}` : undefined}
+  >
     <path d={def.path} />
+  </svg>
+) : def?.kind === 'mono' ? (
+  <svg
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    class={className}
+    style={color ? `color:${color}` : undefined}
+  >
+    <rect
+      x="1.5"
+      y="1.5"
+      width="21"
+      height="21"
+      rx="5"
+      fill="currentColor"
+      fill-opacity="0.14"
+      stroke="currentColor"
+      stroke-opacity="0.75"
+      stroke-width="1.2"
+    />
+    <text
+      x="12"
+      y="12.5"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      fill="currentColor"
+      font-family="var(--font-display), system-ui, sans-serif"
+      font-weight="700"
+      font-size={def.text.length > 2 ? 6.6 : 9.5}
+      letter-spacing="-0.2"
+    >
+      {def.text}
+    </text>
   </svg>
 ) : (
   <svg
@@ -31,6 +73,7 @@ const def = 'builtin' in icon ? TOOL_ICONS[icon.builtin] : undefined;
     stroke-linejoin="round"
     aria-hidden="true"
     class={className}
+    style={color ? `color:${color}` : undefined}
   >
     <path d={def?.path} />
   </svg>

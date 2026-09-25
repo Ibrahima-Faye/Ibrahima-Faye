@@ -75,6 +75,8 @@ export interface LinkItem {
 
 export interface TimelineItem {
   id: string;
+  /** formation | experience (colonne du parcours). */
+  kind?: string;
   /** Ex. « 2021 – 2023 » (libre). */
   period?: string;
   title: string;
@@ -87,9 +89,16 @@ export interface ToolItem {
   name?: string;
   /** Icône intégrée (ex. « sketchup », « chip ») ou image (« /identite/logo-outil.svg »). */
   icon?: string;
+  /** Description courte : l'usage de l'outil dans le travail. */
   usage?: string;
-  /** Domaine de rattachement (slug) si l'outil n'est cité dans aucun projet. */
-  domain?: string;
+  /** Sous-catégorie (src/data/tools.ts → TOOL_GROUPS), ex. « 3d-cao ». */
+  group?: string;
+  /** Niveau : decouverte | utilisation | maitrise | avance (aucun par défaut). */
+  level?: string;
+  /** Domaines d'expertise associés (slugs) ; vide = ceux d'origine. */
+  domains?: string[];
+  /** Projets associés (identifiants), en plus de ceux dont la fiche cite l'outil. */
+  projects?: string[];
   visible?: boolean;
 }
 
@@ -98,12 +107,18 @@ export interface ContentSettings {
   links?: LinkItem[];
   hero?: { description?: string; primaryHref?: string; secondaryHref?: string };
   expertises?: { items?: ExpertiseItem[] };
-  ecosystem?: { items?: EntityItem[] };
+  ecosystem?: {
+    items?: EntityItem[];
+    /** Parcours d'un projet entre les deux univers : remplace celui d'origine. */
+    flow?: { title: string; text?: string; side?: string }[];
+  };
   about?: {
     steps?: { title: string; text: string }[];
     blocks?: AboutBlock[];
-    /** Parcours / formation : rien n'est affiché tant que la liste est vide. */
+    /** Parcours (formation, expérience) : remplace celui d'origine. */
     timeline?: TimelineItem[];
+    /** Fiche d'identité : remplace celle d'origine. */
+    facts?: { label: string; value: string }[];
   };
   /** Outils (section Expertises) : ajouts, icônes, textes, visibilité — voir src/lib/tools.ts. */
   tools?: { items?: ToolItem[] };

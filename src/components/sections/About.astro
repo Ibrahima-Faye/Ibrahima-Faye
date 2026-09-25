@@ -2,8 +2,8 @@
 /**
  * À propos — première section après le Hero : qui est Ibrahima Faye, avant les réalisations.
  * Textes : src/i18n/ui/fr.ts (about) — modifiables dans Contenu du site → À propos.
- * Fiche d'identité : tirée des données du site (domaines de chaque univers, entités), rien d'inventé.
- * Parcours / formation : affiché UNIQUEMENT s'il est renseigné dans l'administration.
+ * Biographie, fiche d'identité et parcours : sources = CV et ancien portfolio (voir fr.ts), rien d'inventé.
+ * Tout est modifiable dans Contenu du site → À propos.
  */
 import { Picture } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
@@ -11,7 +11,6 @@ import { useTranslations, type Locale } from '@/i18n';
 import { site } from '@/config/site';
 import { settings } from '@/lib/settings';
 import { inlineMarkdown, markdownBlocks, safeHref } from '@/lib/studio/content';
-import { entityDomains } from '@/data/entities';
 import Button from '@/components/ui/Button.astro';
 import SectionHeading from '@/components/ui/SectionHeading.astro';
 import type { SectionProps } from '@/lib/studio/layout';
@@ -37,24 +36,19 @@ const photo = portrait ? undefined : identity.photo;
 const ratio = portrait ? portrait.width / portrait.height : 4 / 5;
 // Contenu du site → À propos : blocs supplémentaires (titre, texte, liste, citation, image, bouton)
 const blocks = settings.content.about?.blocks ?? [];
-const timeline = (settings.content.about?.timeline ?? []).filter((item) => item.title?.trim());
 const name = identity.name?.trim() || t.about.title;
-
-// Fiche : création numérique (ClicGraph) · technologie (JeeFSYS) — domaines du site, sans doublon
-const tech = entityDomains.jeefsys;
-const creation = entityDomains.clicgraph.filter((d) => !tech.includes(d));
-const facts = [
-  { label: t.about.facts.profile, value: t.about.role },
+const facts = t.about.facts.filter((f) => f.label && f.value);
+// Parcours en deux colonnes : la formation et l'expérience (le CV ne les date pas l'une par rapport à l'autre)
+const timeline = [
   {
-    label: t.about.facts.creation,
-    value: creation.map((d) => t.domains[d].title).join(' · '),
+    label: t.about.timelineFormation,
+    items: t.about.timeline.filter((i) => i.kind !== 'experience'),
   },
-  { label: t.about.facts.technology, value: tech.map((d) => t.domains[d].title).join(' · ') },
   {
-    label: t.about.facts.universe,
-    value: `${t.entities.clicgraph.name} · ${t.entities.jeefsys.name}`,
+    label: t.about.timelineExperience,
+    items: t.about.timeline.filter((i) => i.kind === 'experience'),
   },
-].filter((f) => f.value);
+].filter((col) => col.items.length > 0);
 ---
 
 <section
@@ -257,22 +251,35 @@ const facts = [
 
         <!-- Parcours / formation : seulement ce qui a été renseigné -->
         {timeline.length > 0 && (
-          <div class="mt-14" data-reveal>
-            <p class="eyebrow mb-6">{t.about.timelineLabel}</p>
-            <ol class="about-timeline">
-              {timeline.map((item) => (
-                <li>
-                  {item.period && <span class="about-period">{item.period}</span>}
-                  <p class="font-display text-lg font-bold tracking-tight">{item.title}</p>
-                  {item.text && (
-                    <p
-                      class="text-paper-muted mt-1.5 max-w-xl text-[0.95rem] leading-relaxed"
-                      set:html={inlineMarkdown(item.text)}
-                    />
-                  )}
-                </li>
+          <div class="mt-16">
+            <p class="eyebrow mb-7" data-reveal="fade">
+              {t.about.timelineLabel}
+            </p>
+            <div class="grid gap-10 md:grid-cols-2 md:gap-8">
+              {timeline.map((col) => (
+                <div>
+                  <p class="about-col" data-reveal="fade">
+                    {col.label}
+                  </p>
+                  <ol class="about-timeline">
+                    {col.items.map((item) => (
+                      <li data-reveal>
+                        {item.period && <span class="about-period">{item.period}</span>}
+                        <p class="font-display text-[1.05rem] leading-snug font-bold tracking-tight">
+                          {item.title}
+                        </p>
+                        {item.text && (
+                          <p
+                            class="text-paper-muted mt-1.5 text-[0.92rem] leading-relaxed"
+                            set:html={inlineMarkdown(item.text)}
+                          />
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
               ))}
-            </ol>
+            </div>
           </div>
         )}
 
@@ -331,6 +338,16 @@ const facts = [
     color: var(--color-lavender-100);
     font-size: 1rem;
     line-height: 1.55;
+  }
+
+  .about-col {
+    margin-bottom: 1.25rem;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-lavender-100);
   }
 
   /* parcours : ligne verticale et repères */

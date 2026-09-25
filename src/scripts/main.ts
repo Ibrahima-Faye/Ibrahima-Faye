@@ -12,6 +12,7 @@ import { initFilters } from './filters';
 import { initLightbox, initGalleryVideos } from './lightbox';
 import { initCarousels } from './carousel';
 import { initContactForm } from './contact-form';
+import { initExpertises } from './expertises';
 import { mountHeroField } from './hero-field';
 import { initCursor } from './cursor';
 import { initStudio, readAnimations } from './studio/runtime';
@@ -40,6 +41,7 @@ function init() {
   cleanups.push(initContactForm());
   cleanups.push(initGalleryVideos());
   cleanups.push(initCarousels());
+  cleanups.push(initExpertises());
 
   cleanups.push(initCursor());
 

@@ -10,6 +10,9 @@
  *  - adresse directe → « /#contact » ouvert dans un nouvel onglet arrive lui aussi au bon endroit ;
  *  - section active  → calculée d'après la position de défilement ; aucune dans le Hero et le Manifeste ;
  *  - menu mobile     → fermé (et défilement débloqué) AVANT le déplacement ;
+ *  - retour / avance → le navigateur revient EXACTEMENT à la position quittée (section, projets…) :
+ *                      le routeur d'Astro la replace trop tôt, puis ScrollTrigger remet la page en haut ;
+ *                      on la replace donc une fois la page stabilisée ;
  *  - accessibilité   → le focus passe sur la section atteinte ; mouvement réduit = déplacement instantané.
  *
  * Les sections gérées sont celles des liens `[data-nav-link]` de l'en-tête.
@@ -27,6 +30,12 @@ const TOLERANCE = 2;
 let pending: string | null = null;
 /** Première page affichée depuis le chargement du navigateur (et non via le routeur). */
 let firstLoad = true;
+/** Retour / avance du navigateur : position à retrouver sur la page qui arrive (état d'historique). */
+let restore: { url: string; y: number } | null = null;
+window.addEventListener('popstate', () => {
+  const y = (history.state as { scrollY?: unknown } | null)?.scrollY;
+  restore = typeof y === 'number' && y > 0 ? { url: location.href, y } : null;
+});
 
 const root = document.documentElement;
 const prefersReducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -184,6 +193,43 @@ async function settleOn(id: string, state: NavState) {
   }
 }
 
+/**
+ * Retour sur une page déjà visitée : même principe que settleOn, avec la position enregistrée.
+ * Passes supplémentaires : ScrollTrigger recalcule la page (et la remet en haut) après son chargement.
+ */
+async function settleAt(y: number, state: NavState) {
+  const user = watchUser();
+  let placed: number | null = null;
+  let released = false;
+  const place = () => {
+    // la page a été déplacée ailleurs entre deux passes (autre qu'une remise en haut par ScrollTrigger) :
+    // quelqu'un d'autre a pris la main, on ne corrige plus
+    if (placed !== null && Math.abs(window.scrollY - placed) > 60 && window.scrollY > 60)
+      released = true;
+    if (user.touched || released) return;
+    placed = Math.round(Math.min(y, maxScroll()));
+    window.scrollTo({ top: placed, behavior: 'instant' });
+  };
+  try {
+    place();
+    await document.fonts?.ready;
+    await frame();
+    place();
+    if (document.readyState !== 'complete') {
+      await new Promise((resolve) => window.addEventListener('load', resolve, { once: true }));
+      await frame();
+      place();
+    }
+    for (const delay of [120, 250, 450]) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      place();
+    }
+  } finally {
+    user.stop();
+    state.update();
+  }
+}
+
 interface NavState {
   /** Pendant un déplacement programmé, la section visée reste active (pas de clignotement). */
   lockedOn: string | null;
@@ -277,9 +323,12 @@ export function initNavigation(): () => void {
     pending ??
     // adresse directe « /#contact » (pas un rechargement : le navigateur restaure alors la position)
     (firstLoad && navigationType !== 'reload' ? decodeURIComponent(location.hash.slice(1)) : '');
+  const back = restore && restore.url === location.href && !pending ? restore.y : null;
   pending = null;
+  restore = null;
   firstLoad = false;
-  if (arrival && ids.has(arrival) && document.getElementById(arrival)) {
+  if (back !== null) void settleAt(back, state);
+  else if (arrival && ids.has(arrival) && document.getElementById(arrival)) {
     replaceHash(arrival);
     void settleOn(arrival, state);
   }

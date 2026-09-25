@@ -23,15 +23,15 @@ const original = (path: string) =>
 const t = useTranslations('fr');
 
 // Vocabulaire du site transmis à l'interface (une seule source de vérité : src/data + src/i18n).
-// outils cités dans les fiches (Expertises → Outils) : projets publiés uniquement, comme sur le site
-const technologies = [
-  ...new Set(
-    (await getProjects()).filter((p) => !p.data.draft).flatMap((p) => p.data.technologies),
-  ),
-];
+// projets (Expertises → Outils : projets associés)
+const projects = (await getProjects()).map((p) => ({
+  id: p.id,
+  title: p.data.title,
+  draft: p.data.draft,
+}));
 
 const meta = {
-  technologies,
+  projects,
   categories: domainSlugs.map((slug) => ({
     slug,
     number: domainNumber(slug),

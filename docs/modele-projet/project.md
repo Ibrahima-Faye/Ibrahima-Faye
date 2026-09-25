@@ -14,7 +14,7 @@
 # — Identité —
 title: Titre du projet
 # 3d-architecture | design-graphique | impression-3d-fabrication | robotique
-# automatisation | electronique-electrotechnique | prototypage
+# automatisation | electronique-electrotechnique | informatique-industrielle | prototypage
 category: prototypage
 # Marque : clicgraph | jeefsys | personal   —  plusieurs : [clicgraph, jeefsys]
 entity: personal
