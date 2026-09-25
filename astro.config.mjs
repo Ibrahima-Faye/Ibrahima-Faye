@@ -43,6 +43,9 @@ export default defineConfig({
   site,
   output: 'static', // 100 % statique : les pages publiques sont générées au build
   adapter: isDev ? undefined : cloudflare(),
+  // Pas de sessions Astro (le site ne les utilise pas ; /admin s'appuie sur Cloudflare Access) : sans cela,
+  // l'adaptateur déclare un stockage KV « SESSION » sans identifiant, que l'envoi du Worker refuse.
+  session: false,
   trailingSlash: 'always',
   build: { format: 'directory' },
   prefetch: { prefetchAll: false, defaultStrategy: 'hover' },
