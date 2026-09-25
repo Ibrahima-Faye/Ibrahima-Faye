@@ -70,3 +70,8 @@ src/content/projects/*/_web/.lock
 # Versions web de plus de 25 Mio (grosses vidéos) : JAMAIS dans git, prévues pour un stockage
 # externe (Cloudflare R2…). Copie locale conservée ici ; voir docs/MEDIAS.md.
 src/content/projects/*/_web/*/distant/
+
+# Cloudflare (Wrangler) : état local et secrets locaux — jamais dans Git
+.wrangler/
+.dev.vars*
+!.dev.vars.example

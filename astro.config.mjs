@@ -2,7 +2,16 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
+import cloudflare from '@astrojs/cloudflare';
 import localCms from './integrations/local-cms/index.mjs';
+
+/**
+ * Adaptateur Cloudflare (Worker « ibrahima-faye », voir wrangler.jsonc) : même configuration que celle
+ * qu'appliquait automatiquement le build Cloudflare, figée ici pour un déploiement reproductible.
+ * Appliqué au build seulement : en développement (`astro dev`), le serveur reste celui d'aujourd'hui,
+ * dont l'administration locale a besoin (elle charge le code du site dans Node).
+ */
+const isDev = process.argv.slice(2).includes('dev');
 
 /**
  * URL publique du site (canonical, sitemap, Open Graph) : le domaine de production officiel.
@@ -16,7 +25,8 @@ const site = process.env.SITE_URL || PRODUCTION_URL;
 // https://astro.build/config
 export default defineConfig({
   site,
-  output: 'static', // 100 % statique : déployable tel quel sur Vercel, Netlify, Cloudflare Pages
+  output: 'static', // 100 % statique : les pages publiques sont générées au build
+  adapter: isDev ? undefined : cloudflare(),
   trailingSlash: 'always',
   build: { format: 'directory' },
   prefetch: { prefetchAll: false, defaultStrategy: 'hover' },

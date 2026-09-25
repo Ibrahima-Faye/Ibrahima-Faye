@@ -1,0 +1,18 @@
+{
+  // Worker Cloudflare du portfolio (déploiement : Workers Builds, « npx wrangler deploy » sur main).
+  // Reprend EXACTEMENT la configuration que Wrangler générait automatiquement à chaque build
+  // (autoconfig Astro), avec le vrai nom du Worker. Aucun secret ici : les secrets vont dans
+  // les réglages du Worker (Cloudflare) ou dans .dev.vars en local (ignoré par Git).
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ibrahima-faye",
+  "compatibility_date": "2026-09-23",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+  },
+  "observability": {
+    "enabled": true,
+  },
+}
