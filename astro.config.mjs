@@ -22,6 +22,22 @@ const isDev = process.argv.slice(2).includes('dev');
 const PRODUCTION_URL = 'https://ibrahimafye.com';
 const site = process.env.SITE_URL || PRODUCTION_URL;
 
+/**
+ * Administration distante /admin/* (Worker Cloudflare, protégée par Cloudflare Access — voir src/worker/admin.ts).
+ * Ajoutée au build seulement : en développement, /admin reste l'administration locale. Seule route rendue
+ * à la demande ; toutes les pages publiques restent générées au build.
+ */
+const remoteAdmin = {
+  name: 'admin-distante',
+  hooks: {
+    /** @param {{ command: string, injectRoute: (route: { pattern: string, entrypoint: string, prerender: boolean }) => void }} options */
+    'astro:config:setup': ({ command, injectRoute }) => {
+      if (command !== 'build') return;
+      injectRoute({ pattern: '/admin/[...path]', entrypoint: './src/worker/admin-route.ts', prerender: false });
+    },
+  },
+};
+
 // https://astro.build/config
 export default defineConfig({
   site,
@@ -38,7 +54,7 @@ export default defineConfig({
     routing: { prefixDefaultLocale: false },
   },
   // localCms : administration /admin, UNIQUEMENT avec `npm run dev` (rien n'est ajouté au site publié)
-  integrations: [sitemap(), localCms()],
+  integrations: [sitemap(), localCms(), remoteAdmin],
   vite: {
     plugins: [tailwindcss()],
   },

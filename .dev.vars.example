@@ -1,0 +1,10 @@
+# Modèle des secrets du Worker (noms seulement — AUCUNE vraie valeur dans ce fichier).
+# En production : Cloudflare → Workers & Pages → ibrahima-faye → Settings → Variables and Secrets (type « Secret »).
+# En local (wrangler dev) : copier en .dev.vars (ignoré par Git) et remplir.
+
+# Domaine d'équipe Zero Trust, ex. https://mon-equipe.cloudflareaccess.com
+CF_ACCESS_TEAM_DOMAIN=
+# « Application Audience (AUD) Tag » de l'application Access qui protège /admin
+CF_ACCESS_AUD=
+# Adresse(s) autorisée(s), séparées par des virgules
+CMS_ALLOWED_EMAILS=
